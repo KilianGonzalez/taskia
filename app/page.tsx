@@ -12,7 +12,7 @@ export default function HomePage() {
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a
-            href="/(auth)/login"
+            href="/login"
             className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1 w-full sm:w-auto text-center"
           >
             🚀 Empezar ahora
