@@ -8,7 +8,7 @@ export default function AuthError() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.push("/login")
+      router.push("/(auth)/login")
     }, 3000)
 
     return () => clearTimeout(timer)
@@ -22,7 +22,7 @@ export default function AuthError() {
           Hubo un error al procesar tu autenticación. Serás redirigido al login...
         </p>
         <button 
-          onClick={() => router.push("/login")}
+          onClick={() => router.push("/(auth)/login")}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
         >
           Ir al login ahora
