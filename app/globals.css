@@ -164,4 +164,127 @@ body {
     /* Bordes redondeados modernos */
     --radius: 0.75rem;
   }
+
+  /* Fondo y borde general */
+  .calendar-wrapper .fc {
+    font-family: inherit !important;
+  }
+
+  /* Quitar estilos por defecto de eventos */
+  .calendar-wrapper .fc-event {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 1px 2px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+  }
+
+  /* Líneas de cuadrícula muy sutiles */
+  .calendar-wrapper .fc-theme-standard td,
+  .calendar-wrapper .fc-theme-standard th,
+  .calendar-wrapper .fc-theme-standard .fc-scrollgrid {
+    border-color: #f1f5f9 !important;
+  }
+
+  /* Título (ej: "Febrero 2026") */
+  .calendar-wrapper .fc-toolbar-title {
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    letter-spacing: -0.025em !important;
+  }
+
+  /* Botones de navegación */
+  .calendar-wrapper .fc .fc-button {
+    background: white !important;
+    color: #475569 !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    padding: 5px 12px !important;
+    text-transform: capitalize !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+    transition: all 0.15s ease !important;
+  }
+
+  .calendar-wrapper .fc .fc-button:hover {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  .calendar-wrapper .fc .fc-button-active,
+  .calendar-wrapper .fc .fc-button-primary:not(:disabled).fc-button-active {
+    background: #0f172a !important;
+    color: white !important;
+    border-color: #0f172a !important;
+  }
+
+  /* Quitar outline azul feo al hacer clic */
+  .calendar-wrapper .fc .fc-button:focus {
+    box-shadow: 0 0 0 2px white, 0 0 0 4px #cbd5e1 !important;
+    outline: none !important;
+  }
+
+  /* Cabecera de días (Lun, Mar, ...) */
+  .calendar-wrapper .fc-col-header-cell {
+    background: #fafafa !important;
+    border-bottom: 2px solid #f1f5f9 !important;
+  }
+
+  .calendar-wrapper .fc-col-header-cell-cushion {
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 10px 4px !important;
+    text-decoration: none !important;
+  }
+
+  /* Resaltar el día de HOY */
+  .calendar-wrapper .fc .fc-day-today {
+    background-color: #fafafe !important;
+  }
+
+  .calendar-wrapper .fc-day-today .fc-col-header-cell-cushion {
+    color: #6366F1 !important;
+  }
+
+  /* Etiquetas de hora (7:00, 8:00...) */
+  .calendar-wrapper .fc-timegrid-slot-label-cushion {
+    font-size: 0.7rem !important;
+    color: #94a3b8 !important;
+    font-weight: 500 !important;
+  }
+
+  /* Indicador de hora actual */
+  .calendar-wrapper .fc-now-indicator-line {
+    border-color: #6366F1 !important;
+    border-width: 2px !important;
+  }
+  .calendar-wrapper .fc-now-indicator-arrow {
+    border-color: #6366F1 !important;
+  }
+
+  /* Selección al hacer clic y arrastrar */
+  .calendar-wrapper .fc-highlight {
+    background: #EEF2FF !important;
+    border-radius: 6px !important;
+  }
+
+  /* Scroll del calendario */
+  .calendar-wrapper .fc-scroller::-webkit-scrollbar {
+    width: 4px;
+  }
+  .calendar-wrapper .fc-scroller::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .calendar-wrapper .fc-scroller::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 4px;
+  }
+
 }
