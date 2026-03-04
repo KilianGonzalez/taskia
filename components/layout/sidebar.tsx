@@ -1,5 +1,6 @@
 "use client"
 
+
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSidebar } from "@/components/layout/sidebar-context"
@@ -9,14 +10,16 @@ import {
   Zap, 
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Calendar
 } from "lucide-react"
 
 const navItems = [
-  { href: "/dashboard",          label: "Semana",    icon: LayoutDashboard },
-  { href: "/dashboard/tasks",    label: "Tareas",    icon: ListTodo },
-  { href: "/dashboard/goals",    label: "Objetivos", icon: Zap },
-  { href: "/dashboard/settings", label: "Ajustes",   icon: Settings },
+  { href: "/dashboard",             label: "Inicio",      icon: LayoutDashboard },
+  { href: "/dashboard/calendar",    label: "Calendario",  icon: Calendar },
+  { href: "/dashboard/tasks",       label: "Tareas",      icon: ListTodo },
+  { href: "/dashboard/goals",       label: "Objetivos",   icon: Zap },
+  { href: "/dashboard/settings",    label: "Ajustes",     icon: Settings },
 ]
 
 export function Sidebar() {
