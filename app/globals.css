@@ -288,3 +288,39 @@ body {
   }
 
 }
+
+/* ====================================================
+   🎨 ANIMACIONES FLOTACIÓN - PANEL LOGIN
+   ==================================================== */
+
+@keyframes float-slow {
+  0%   { transform: translateY(0px) rotate(0deg); }
+  50%  { transform: translateY(-10px) rotate(1deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+@keyframes float-medium {
+  0%   { transform: translateY(0px) rotate(0deg); }
+  50%  { transform: translateY(-7px) rotate(-1deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+@keyframes float-badge {
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-6px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float-slow {
+  animation: float-slow 5s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 4s ease-in-out infinite;
+  animation-delay: 0.8s; /* Desfase para que no floten sincronizadas */
+}
+
+.animate-float-badge {
+  animation: float-badge 3.5s ease-in-out infinite;
+  animation-delay: 0.4s;
+}
