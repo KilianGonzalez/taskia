@@ -3,15 +3,8 @@ import { redirect } from "next/navigation";
 import { getUserProfile, getUserStats, getTodayTasks } from "@/app/actions";
 import Link from "next/link";
 import {
-  ListTodo,
-  Target,
-  Settings,
-  Flame,
-  CheckCircle2,
-  Clock,
-  ChevronRight,
-  Sparkles,
-  Calendar,
+  ListTodo, Target, Settings, Flame,
+  CheckCircle2, Clock, ChevronRight, Sparkles, Calendar,
 } from "lucide-react";
 
 export default async function DashboardPage() {
@@ -32,25 +25,22 @@ export default async function DashboardPage() {
     'Buenas noches'
 
   const today = new Date().toLocaleDateString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
+    weekday: 'long', day: 'numeric', month: 'long',
   })
-  // Capitalizar primera letra
   const todayFormatted = today.charAt(0).toUpperCase() + today.slice(1)
 
   return (
-    <div className="min-h-full bg-[#f8fafc] p-6 space-y-6">
+    <div className="min-h-full bg-[#f8fafc] dark:bg-gray-950 p-6 space-y-6">
 
       {/* ── SALUDO ── */}
       <div>
-        <p className="text-sm text-gray-400 font-medium">{todayFormatted}</p>
-        <h1 className="text-2xl font-bold text-[#0f172a] mt-0.5">
+        <p className="text-sm text-gray-400 dark:text-gray-500 font-medium">{todayFormatted}</p>
+        <h1 className="text-2xl font-bold text-[#0f172a] dark:text-white mt-0.5">
           {greeting}, {profile?.name}! 👋
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {stats.pendingToday > 0
-            ? <>Tienes <span className="font-semibold text-gray-700">{stats.pendingToday} tareas</span> pendientes para hoy.</>
+            ? <>Tienes <span className="font-semibold text-gray-700 dark:text-gray-300">{stats.pendingToday} tareas</span> pendientes para hoy.</>
             : '¡No tienes tareas pendientes para hoy! 🎉'
           }
         </p>
@@ -59,44 +49,20 @@ export default async function DashboardPage() {
       {/* ── MÉTRICAS ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          {
-            value: stats.pendingToday,
-            label: 'Hoy pendientes',
-            icon: ListTodo,
-            color: 'text-indigo-600',
-            bg: 'bg-indigo-50',
-          },
-          {
-            value: stats.completedThisWeek,
-            label: 'Completadas',
-            icon: CheckCircle2,
-            color: 'text-emerald-600',
-            bg: 'bg-emerald-50',
-          },
-          {
-            value: stats.activeGoals,
-            label: 'Objetivos activos',
-            icon: Target,
-            color: 'text-violet-600',
-            bg: 'bg-violet-50',
-          },
-          {
-            value: stats.streak,
-            label: 'Racha actual',
-            icon: Flame,
-            color: 'text-orange-500',
-            bg: 'bg-orange-50',
-          },
+          { value: stats.pendingToday,      label: 'Hoy pendientes',   icon: ListTodo,    color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-950' },
+          { value: stats.completedThisWeek, label: 'Completadas',      icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950' },
+          { value: stats.activeGoals,       label: 'Objetivos activos', icon: Target,      color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-950' },
+          { value: stats.streak,            label: 'Racha actual',     icon: Flame,        color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950' },
         ].map((metric) => {
           const Icon = metric.icon
           return (
-            <div key={metric.label} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 shadow-sm">
+            <div key={metric.label} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-4 flex items-center gap-4 shadow-sm">
               <div className={`w-10 h-10 rounded-xl ${metric.bg} flex items-center justify-center shrink-0`}>
                 <Icon className={`w-5 h-5 ${metric.color}`} />
               </div>
               <div>
-                <p className="text-xl font-bold text-[#0f172a]">{metric.value}</p>
-                <p className="text-xs text-gray-400">{metric.label}</p>
+                <p className="text-xl font-bold text-[#0f172a] dark:text-white">{metric.value}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">{metric.label}</p>
               </div>
             </div>
           )
@@ -105,7 +71,7 @@ export default async function DashboardPage() {
 
       {/* ── ACCESO RÁPIDO ── */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
           Acceso rápido
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -116,7 +82,7 @@ export default async function DashboardPage() {
               label: 'Tareas',
               description: 'Gestiona todas tus tareas pendientes',
               badge: stats.pendingToday > 0 ? `${stats.pendingToday} pendientes` : null,
-              badgeColor: 'bg-indigo-50 text-indigo-600',
+              badgeColor: 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400',
               iconBg: 'bg-[#1e2d5e]',
             },
             {
@@ -125,7 +91,7 @@ export default async function DashboardPage() {
               label: 'Objetivos',
               description: 'Seguimiento de tus metas académicas y personales',
               badge: stats.activeGoals > 0 ? `${stats.activeGoals} en progreso` : null,
-              badgeColor: 'bg-emerald-50 text-emerald-600',
+              badgeColor: 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400',
               iconBg: 'bg-emerald-500',
             },
             {
@@ -134,7 +100,7 @@ export default async function DashboardPage() {
               label: 'Configuración',
               description: 'Personaliza tu experiencia en TaskIA',
               badge: 'Ajustes',
-              badgeColor: 'bg-violet-50 text-violet-600',
+              badgeColor: 'bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400',
               iconBg: 'bg-violet-500',
             },
           ].map((item) => {
@@ -143,17 +109,17 @@ export default async function DashboardPage() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start gap-4 shadow-sm hover:shadow-md hover:border-gray-200 transition-all group"
+                className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 flex items-start gap-4 shadow-sm hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all group"
               >
                 <div className={`w-12 h-12 rounded-xl ${item.iconBg} flex items-center justify-center shrink-0`}>
                   <Icon className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-[#0f172a]">{item.label}</p>
-                    <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
+                    <p className="font-semibold text-[#0f172a] dark:text-white">{item.label}</p>
+                    <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-400 transition-colors" />
                   </div>
-                  <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{item.description}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">{item.description}</p>
                   {item.badge && (
                     <span className={`inline-block mt-2 text-xs font-medium px-2.5 py-0.5 rounded-full ${item.badgeColor}`}>
                       {item.badge}
@@ -166,45 +132,49 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* ── FILA INFERIOR: Tareas de hoy + Sugerencia IA ── */}
+      {/* ── FILA INFERIOR ── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4">
 
         {/* Tareas de hoy */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-[#0f172a]">Tareas de hoy</h2>
+            <h2 className="font-semibold text-[#0f172a] dark:text-white">Tareas de hoy</h2>
             <Link
               href="/dashboard/tasks"
-              className="text-xs text-emerald-600 font-medium hover:underline flex items-center gap-1"
+              className="text-xs text-emerald-600 dark:text-emerald-400 font-medium hover:underline flex items-center gap-1"
             >
               Ver todas <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
 
           {todayTasks.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
+            <div className="text-center py-8 text-gray-400 dark:text-gray-600">
               <CheckCircle2 className="w-8 h-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm">¡No hay tareas para hoy!</p>
             </div>
           ) : (
             <div className="space-y-3">
               {todayTasks.slice(0, 5).map((task: any) => (
-                <div key={task.id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                <div key={task.id} className="flex items-center gap-3 py-2 border-b border-gray-50 dark:border-gray-800 last:border-0">
                   <div className={`w-2 h-2 rounded-full shrink-0 ${
-                    task.priority === 'alta' ? 'bg-red-400' :
+                    task.priority === 'alta'  ? 'bg-red-400' :
                     task.priority === 'media' ? 'bg-yellow-400' :
                     'bg-green-400'
                   }`} />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${task.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                    <p className={`text-sm font-medium truncate ${
+                      task.completed
+                        ? 'line-through text-gray-400 dark:text-gray-600'
+                        : 'text-gray-700 dark:text-gray-200'
+                    }`}>
                       {task.title}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
                       {task.subject && (
-                        <span className="text-[10px] text-gray-400">{task.subject}</span>
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500">{task.subject}</span>
                       )}
                       {task.due_date && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                        <span className="flex items-center gap-0.5 text-[10px] text-gray-400 dark:text-gray-500">
                           <Clock className="w-2.5 h-2.5" />
                           {new Date(task.due_date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                         </span>
@@ -213,9 +183,9 @@ export default async function DashboardPage() {
                   </div>
                   {task.priority && (
                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${
-                      task.priority === 'alta' ? 'bg-red-50 text-red-500' :
-                      task.priority === 'media' ? 'bg-yellow-50 text-yellow-600' :
-                      'bg-green-50 text-green-600'
+                      task.priority === 'alta'  ? 'bg-red-50 dark:bg-red-950 text-red-500' :
+                      task.priority === 'media' ? 'bg-yellow-50 dark:bg-yellow-950 text-yellow-600' :
+                      'bg-green-50 dark:bg-green-950 text-green-600'
                     }`}>
                       {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
                     </span>
@@ -226,8 +196,10 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Sugerencia IA */}
+        {/* Columna derecha */}
         <div className="flex flex-col gap-4">
+
+          {/* Sugerencia IA — sin cambios, ya es oscuro de base */}
           <div
             className="rounded-2xl p-5 text-white flex-1"
             style={{ background: 'linear-gradient(135deg, #1e2d5e 0%, #2d4a8a 100%)' }}
@@ -252,19 +224,19 @@ export default async function DashboardPage() {
             </Link>
           </div>
 
-          {/* Acceso rápido al calendario */}
+          {/* Calendario */}
           <Link
             href="/dashboard/calendar"
-            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3 hover:shadow-md transition-all group"
+            className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 flex items-center gap-3 hover:shadow-md transition-all group"
           >
-            <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center shrink-0">
               <Calendar className="w-5 h-5 text-sky-500" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-[#0f172a]">Mi Calendario</p>
-              <p className="text-xs text-gray-400">Ver semana completa</p>
+              <p className="text-sm font-semibold text-[#0f172a] dark:text-white">Mi Calendario</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">Ver semana completa</p>
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
+            <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-400 transition-colors" />
           </Link>
         </div>
 
