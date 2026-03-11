@@ -23,32 +23,34 @@ const categoryColors: Record<string, { bg: string; border: string; text: string 
 export default function CalendarView({ initialEvents, flexibleTasks }: CalendarProps) {
 
   const renderEventContent = (eventInfo: any) => {
-    const category = eventInfo.event.extendedProps?.category || 'default'
-    const colors = categoryColors[category] || categoryColors.default
+  const isGoogle = eventInfo.event.extendedProps?.source === 'google'
 
-    return (
-      <div
-        className="flex flex-col h-full w-full px-2 py-1 overflow-hidden rounded-[6px] cursor-pointer group"
-        style={{
-          backgroundColor: colors.bg,
-          borderLeft: `3px solid ${colors.border}`,
-        }}
+  return (
+    <div
+      className="flex flex-col h-full w-full px-2 py-1 overflow-hidden rounded-[6px] cursor-pointer"
+      style={{
+        backgroundColor: isGoogle ? '#d1fae5' : '#EEF2FF',
+        borderLeft: `3px solid ${isGoogle ? '#10b981' : '#6366F1'}`,
+      }}
+    >
+      <p
+        className="text-[11px] font-semibold leading-tight truncate"
+        style={{ color: isGoogle ? '#065f46' : '#3730A3' }}
       >
-        <p
-          className="text-[11px] font-semibold leading-tight truncate"
-          style={{ color: colors.text }}
-        >
-          {eventInfo.event.title}
-        </p>
-        <p
-          className="text-[10px] leading-tight mt-0.5 opacity-70"
-          style={{ color: colors.text }}
-        >
-          {eventInfo.timeText}
-        </p>
-      </div>
-    )
-  }
+        {/* Icono para distinguir origen */}
+        {isGoogle && <span className="mr-1">📅</span>}
+        {eventInfo.event.title}
+      </p>
+      <p
+        className="text-[10px] leading-tight mt-0.5 opacity-70"
+        style={{ color: isGoogle ? '#065f46' : '#3730A3' }}
+      >
+        {eventInfo.timeText}
+      </p>
+    </div>
+  )
+}
+
 
   return (
     <div className="h-full w-full px-2 calendar-wrapper">
