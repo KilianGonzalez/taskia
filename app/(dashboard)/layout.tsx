@@ -15,17 +15,29 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("preferences")
+    .select("name, preferences")
     .eq("id", user.id)
     .single();
 
-  const avatarUrl = profile?.preferences?.avatar_url || null;
+  const avatarUrl =
+    profile?.preferences?.avatar_url ||
+    user.user_metadata?.avatar_url ||
+    user.user_metadata?.picture ||
+    null;
+
+  // ✅ Nombre desde profiles o desde metadata de Google
+  const userName =
+    profile?.name ||
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    user.email?.split('@')[0] ||
+    'Usuario'
 
   return (
     <SidebarProvider>
-      <DashboardShell avatarUrl={avatarUrl}>
+      <DashboardShell avatarUrl={avatarUrl} userName={userName}>
         {children}
       </DashboardShell>
     </SidebarProvider>
-  )
+  );
 }
