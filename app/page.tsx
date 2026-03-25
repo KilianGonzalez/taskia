@@ -1,48 +1,92 @@
+import Link from 'next/link'
+import { CalendarDays, Sparkles, Target } from 'lucide-react'
+
+const features = [
+  {
+    title: 'Planificación IA',
+    description:
+      'Organiza automáticamente tus tareas por prioridad e importancia.',
+    icon: Sparkles,
+  },
+  {
+    title: 'Sprint inteligente',
+    description: 'Divide tus objetivos en sprints semanales accionables.',
+    icon: CalendarDays,
+  },
+  {
+    title: 'Progreso real',
+    description: 'Visualiza tu evolución y ajusta sobre la marcha.',
+    icon: Target,
+  },
+]
+
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="text-center max-w-2xl mx-auto space-y-8">
-        <h1 className="text-6xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent drop-shadow-2xl">
-          TaskIA
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-lg mx-auto leading-relaxed">
-          Tu asistente IA que organiza tu semana de estudio de forma inteligente. 
-          <strong>Empieza ahora</strong> y toma el control total de tus objetivos.
-        </p>
-        
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <a
-            href="/login"
-            className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1 w-full sm:w-auto text-center"
-          >
-            🚀 Empezar ahora
-          </a>
-          <a
-            href="#"
-            className="px-8 py-4 rounded-2xl border border-border font-medium text-lg hover:bg-accent transition-colors w-full sm:w-auto text-center"
-          >
-            Ver demo
-          </a>
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50 text-slate-900">
+      <section className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-6 py-16">
+        <div className="mb-10 flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-400 to-teal-600 shadow-md">
+            <span className="text-lg font-black text-white">T</span>
+          </div>
+          <span className="text-2xl font-bold tracking-tight">TaskIA</span>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12">
-          <div className="text-left p-6 rounded-xl border bg-card hover:shadow-xl transition-all">
-            <span className="text-3xl mb-3">📅</span>
-            <h3 className="font-bold text-xl mb-2">Planificación IA</h3>
-            <p className="text-muted-foreground">Organiza automáticamente tus tareas por prioridad e importancia.</p>
+
+        <div className="grid items-center gap-12 lg:grid-cols-2">
+          <div>
+            <p className="mb-3 inline-flex rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-teal-700">
+              Tu asistente IA para estudiar mejor
+            </p>
+
+            <h1 className="max-w-3xl text-4xl font-black leading-tight sm:text-5xl">
+              Organiza tu semana de forma inteligente
+            </h1>
+
+            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
+              TaskIA te ayuda a planificar estudio, tareas y vida diaria en un
+              solo lugar, con una semana clara, flexible y adaptada a tus
+              objetivos.
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Empezar ahora
+              </Link>
+
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Iniciar sesión
+              </Link>
+            </div>
           </div>
-          <div className="text-left p-6 rounded-xl border bg-card hover:shadow-xl transition-all">
-            <span className="text-3xl mb-3">⚡</span>
-            <h3 className="font-bold text-xl mb-2">Sprint inteligente</h3>
-            <p className="text-muted-foreground">Divide tus objetivos en sprints semanales accionables.</p>
-          </div>
-          <div className="text-left p-6 rounded-xl border bg-card hover:shadow-xl transition-all">
-            <span className="text-3xl mb-3">🎯</span>
-            <h3 className="font-bold text-xl mb-2">Progreso real</h3>
-            <p className="text-muted-foreground">Visualiza tu evolución y ajusta sobre la marcha.</p>
+
+          <div className="grid gap-4">
+            {features.map((feature) => {
+              const Icon = feature.icon
+
+              return (
+                <div
+                  key={feature.title}
+                  className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+                >
+                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-teal-600">
+                    <Icon className="h-5 w-5" />
+                  </div>
+
+                  <h2 className="text-lg font-bold">{feature.title}</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    {feature.description}
+                  </p>
+                </div>
+              )
+            })}
           </div>
         </div>
-      </div>
+      </section>
     </main>
   )
 }
