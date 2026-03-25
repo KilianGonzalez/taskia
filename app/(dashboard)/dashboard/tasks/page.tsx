@@ -1,20 +1,21 @@
-import { createClient } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
-import { TasksClient } from "./tasks-client"
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { getFlexibleTasks } from "@/app/actions";
+import { TasksAiShell } from "@/components/tasks/TasksAiShell";
 
 export default async function TasksPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/login")
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const { data: tasks } = await supabase
-    .from('flexible_tasks')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('due_date', { ascending: true })
+  if (!user) redirect("/login");
 
-    console.log("TASKS_PAGE_USER", user.id)
-console.log("TASKS_PAGE_TASKS", tasks)
+  const tasks = await getFlexibleTasks();
 
-  return <TasksClient initialTasks={tasks || []} />
+  return (
+    <TasksAiShell
+      initialTasks={tasks ?? []}
+    />
+  );
 }

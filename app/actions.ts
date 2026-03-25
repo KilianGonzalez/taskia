@@ -241,3 +241,26 @@ export async function deleteGoal(goalId: string) {
   revalidatePath('/dashboard/goals')
   return { success: true }
 }
+
+export async function getGoals() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("goals")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching goals:", error);
+    return [];
+  }
+
+  return data;
+}

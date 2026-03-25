@@ -1,17 +1,17 @@
-import { createClient } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
-import { GoalsClient } from "./goals-client"
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { getGoals } from "@/app/actions";
+import { GoalsAiShell } from "@/components/goals/GoalsAiShell";
 
 export default async function GoalsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/login")
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const { data: goals } = await supabase
-    .from('goals')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+  if (!user) redirect("/login");
 
-  return <GoalsClient initialGoals={goals || []} />
+  const goals = await getGoals();
+
+  return <GoalsAiShell initialGoals={goals ?? []} />;
 }
