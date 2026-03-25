@@ -13,5 +13,8 @@ export default async function TasksPage() {
     .eq('user_id', user.id)
     .order('due_date', { ascending: true })
 
+    console.log("TASKS_PAGE_USER", user.id)
+console.log("TASKS_PAGE_TASKS", tasks)
+
   return <TasksClient initialTasks={tasks || []} />
 }
