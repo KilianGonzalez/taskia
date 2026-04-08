@@ -4,10 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 export default async function TestPage() {
   // Test Server Actions
   const flexibleTasks = await getFlexibleTasks()
-  const scheduledBlocks = await getScheduledBlocks(
-    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 días atrás
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()  // 7 días adelante
-  )
+  const scheduledBlocks = await getScheduledBlocks()
 
   return (
     <div className="container mx-auto p-6 space-y-6">

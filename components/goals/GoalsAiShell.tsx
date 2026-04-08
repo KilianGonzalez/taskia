@@ -25,13 +25,13 @@ type Goal = {
     title: string;
     description?: string;
     category?: "academic" | "personal" | "habit";
-    currentvalue: number;
-    targetvalue: number;
+    current_value: number;
+    target_value: number;
     unit: string;
-    duedate?: string;
+    due_date?: string;
     status?: "active" | "completed" | "paused";
     streak?: number;
-    createdat?: string;
+    created_at?: string;
 };
 
 type SuggestedSession = {
@@ -85,8 +85,8 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
         return Math.round(
             activeGoals.reduce((acc, goal) => {
                 const progress =
-                    goal.targetvalue > 0
-                        ? Math.min(100, Math.round((goal.currentvalue / goal.targetvalue) * 100))
+                    goal.target_value > 0
+                        ? Math.min(100, Math.round((goal.current_value / goal.target_value) * 100))
                         : 0;
 
                 return acc + progress;

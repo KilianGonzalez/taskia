@@ -15,7 +15,7 @@ interface Task {
   category?: string
   priority?: string
   due_date?: string
-  estimated_duration?: number
+  estimated_duration_min?: number
   difficulty?: number
   notes?: string
   completed: boolean
@@ -61,7 +61,7 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
       category: form.category || undefined,
       priority: form.priority,
       due_date: form.due_date || undefined,
-      estimated_duration: form.estimated_duration ? Number(form.estimated_duration) : undefined,
+      estimated_duration_min: form.estimated_duration ? Number(form.estimated_duration) : undefined,
       difficulty: form.difficulty ? Number(form.difficulty) : undefined,
       notes: form.notes || undefined,
     })
@@ -366,9 +366,9 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
                                 {new Date(task.due_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                               </span>
                             )}
-                            {task.estimated_duration && (
+                            {task.estimated_duration_min && (
                               <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                                ~{task.estimated_duration} min
+                                ~{task.estimated_duration_min} min
                               </span>
                             )}
                           </div>

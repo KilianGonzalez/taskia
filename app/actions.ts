@@ -4,11 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import {
-  GEMINI_MODEL,
+  GROQ_MODEL,
   AI_MAX_INPUT_TOKENS,
   countInputTokens,
   generateJson,
-} from '@/lib/ai/gemini'
+} from '@/lib/ai/groq'
 
 
 export async function getFlexibleTasks(userId?: string) {
@@ -330,59 +330,66 @@ function buildGoalPrompt(goal: {
   unit?: string | null
   due_date?: string | null
 }) {
-  return [
-    'Eres un asistente de planificación académica de TaskIA.',
-    'Devuelve solo JSON válido, sin markdown, sin texto extra.',
-    'Objetivo: convertir un objetivo académico en 3 a 5 sesiones realistas.',
-    'Reglas:',
-    '- sesiones cortas y realistas para estudiante',
-    '- no repetir títulos',
-    '- durationMin entre 25 y 90',
-    '- summary máximo 140 caracteres',
-    '- reason máximo 100 caracteres',
-    '- focus máximo 80 caracteres',
-    '',
-    'Schema JSON exacto:',
-    '{ "summary": "string", "sessions": [ { "title": "string", "durationMin": 45, "focus": "string", "reason": "string" } ] }',
-    '',
-    'Datos del objetivo:',
-    JSON.stringify({
-      id: goal.id,
-      title: goal.title,
-      description: goal.description ?? '',
-      category: goal.category ?? '',
-      current_value: goal.current_value ?? 0,
-      target_value: goal.target_value ?? 0,
-      unit: goal.unit ?? '',
-      due_date: goal.due_date ?? null,
-    }),
-  ].join('\n')
+  const goalData = {
+    title: goal.title,
+    description: goal.description || '',
+    target: goal.target_value || 0,
+    current: goal.current_value || 0,
+    unit: goal.unit || '',
+    due: goal.due_date || null
+  }
+
+  return `Convierte este objetivo académico en 3-5 sesiones de estudio:
+${JSON.stringify(goalData)}
+
+Responde solo JSON:
+{"summary":"resumen breve","sessions":[{"title":"sesión","durationMin":30,"focus":"enfoque","reason":"razón"}]}
+
+Reglas:
+- Sesiones de 25-90 min
+- Títulos únicos y cortos
+- Summary: máx 100 chars
+- Focus: máx 60 chars  
+- Reason: máx 80 chars`
 }
 
 function safeParseGoalPlan(text: string): GoalPlanResult {
-  const parsed = JSON.parse(text)
+  try {
+    // Limpiar markdown si existe
+    let cleanText = text.trim();
+    if (cleanText.startsWith('```json')) {
+      cleanText = cleanText.replace(/```json\s*/, '').replace(/```\s*$/, '');
+    } else if (cleanText.startsWith('```')) {
+      cleanText = cleanText.replace(/```\s*/, '').replace(/```\s*$/, '');
+    }
 
-  const sessions = Array.isArray(parsed.sessions)
-    ? parsed.sessions
-      .map((s: any) => ({
-        title: String(s.title ?? '').trim(),
-        durationMin: Number(s.durationMin ?? 0),
-        focus: String(s.focus ?? '').trim(),
-        reason: String(s.reason ?? '').trim(),
-      }))
-      .filter(
-        (s: SuggestedSession) =>
-          s.title &&
-          Number.isFinite(s.durationMin) &&
-          s.durationMin >= 25 &&
-          s.durationMin <= 90
-      )
-      .slice(0, 5)
-    : []
+    const parsed = JSON.parse(cleanText);
 
-  return {
-    summary: String(parsed.summary ?? '').trim().slice(0, 140),
-    sessions,
+    const sessions = Array.isArray(parsed.sessions)
+      ? parsed.sessions
+        .map((s: any) => ({
+          title: String(s.title ?? '').trim(),
+          durationMin: Number(s.durationMin ?? 0),
+          focus: String(s.focus ?? '').trim(),
+          reason: String(s.reason ?? '').trim(),
+        }))
+        .filter(
+          (s: SuggestedSession) =>
+            s.title &&
+            Number.isFinite(s.durationMin) &&
+            s.durationMin >= 25 &&
+            s.durationMin <= 90
+        )
+        .slice(0, 5)
+      : [];
+
+    return {
+      summary: String(parsed.summary ?? '').trim().slice(0, 140),
+      sessions,
+    };
+  } catch (error: any) {
+    console.error('Error parsing goal plan JSON:', error);
+    throw new Error(`La IA devolvió un formato no válido: ${error.message}`);
   }
 }
 
@@ -421,7 +428,7 @@ export async function suggestGoalSessions(goalId: string) {
     await supabase.from('ai_logs').insert({
       user_id: user.id,
       action: 'suggest_goal_sessions',
-      model: GEMINI_MODEL,
+      model: GROQ_MODEL,
       input_tokens_estimated: estimatedInputTokens,
       status: 'blocked',
       error_message: 'Prompt demasiado largo',
@@ -444,12 +451,12 @@ export async function suggestGoalSessions(goalId: string) {
     await supabase.from('ai_logs').insert({
       user_id: user.id,
       action: 'suggest_goal_sessions',
-      model: GEMINI_MODEL,
+      model: GROQ_MODEL,
       input_tokens_estimated: estimatedInputTokens,
-      prompt_tokens: usage?.promptTokenCount ?? null,
-      output_tokens: usage?.candidatesTokenCount ?? null,
-      total_tokens: usage?.totalTokenCount ?? null,
-      thought_tokens: usage?.thoughtsTokenCount ?? null,
+      prompt_tokens: usage?.prompt_tokens ?? null,
+      output_tokens: usage?.completion_tokens ?? null,
+      total_tokens: usage?.total_tokens ?? null,
+      thought_tokens: null,
       status: 'success',
       request_payload: { goalId },
       response_payload: parsed,
@@ -462,7 +469,7 @@ export async function suggestGoalSessions(goalId: string) {
     await supabase.from('ai_logs').insert({
       user_id: user.id,
       action: 'suggest_goal_sessions',
-      model: GEMINI_MODEL,
+      model: GROQ_MODEL,
       input_tokens_estimated: estimatedInputTokens,
       status: 'error',
       error_message: error?.message ?? 'Error desconocido',
