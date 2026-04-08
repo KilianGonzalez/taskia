@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { getScheduledBlocks, getGoogleCalendarEvents } from "@/app/actions";
+import { getScheduledBlocks, getGoogleCalendarEvents, getFlexibleTasks } from "@/app/actions";
 import { CalendarAiShell } from "@/components/calendar/CalendarAiShell";
 
 export default async function CalendarPage() {
@@ -11,9 +11,10 @@ export default async function CalendarPage() {
 
   if (!user) redirect("/login");
 
-  const [scheduledBlocks, googleEvents] = await Promise.all([
+  const [scheduledBlocks, googleEvents, flexibleTasks] = await Promise.all([
     getScheduledBlocks(),
     getGoogleCalendarEvents(),
+    getFlexibleTasks(),
   ]);
 
   const allEvents = [...scheduledBlocks, ...googleEvents];
@@ -21,7 +22,7 @@ export default async function CalendarPage() {
   return (
     <CalendarAiShell
       initialEvents={allEvents}
-      flexibleTasks={[]}
+      flexibleTasks={flexibleTasks}
     />
   );
 }

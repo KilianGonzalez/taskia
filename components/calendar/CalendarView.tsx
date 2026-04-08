@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -18,38 +19,74 @@ const categoryColors: Record<string, { bg: string; border: string; text: string 
   estudio:    { bg: '#FFF7ED', border: '#F97316', text: '#C2410C' },
   musica:     { bg: '#FDF4FF', border: '#D946EF', text: '#A21CAF' },
   ocio:       { bg: '#F0F9FF', border: '#0EA5E9', text: '#0369A1' },
+  study:      { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' },
 }
 
 export default function CalendarView({ initialEvents, flexibleTasks }: CalendarProps) {
 
-  const renderEventContent = (eventInfo: any) => {
-  const isGoogle = eventInfo.event.extendedProps?.source === 'google'
+  // Convertir flexibleTasks a eventos del calendario (como tareas pendientes)
+  const taskEvents = useMemo(() => {
+    return flexibleTasks
+      .filter((task: any) => !task.completed && task.due_date)
+      .map((task: any) => {
+        const dueDate = new Date(task.due_date)
+        const duration = task.estimated_duration_min || 60
+        const endDate = new Date(dueDate.getTime() + duration * 60000)
+        
+        return {
+          id: `task_${task.id}`,
+          title: task.title,
+          start: dueDate.toISOString(),
+          end: endDate.toISOString(),
+          backgroundColor: categoryColors[task.category || 'default']?.bg || categoryColors.default.bg,
+          borderColor: categoryColors[task.category || 'default']?.border || categoryColors.default.border,
+          textColor: categoryColors[task.category || 'default']?.text || categoryColors.default.text,
+          extendedProps: {
+            source: 'flexible_task',
+            category: task.category,
+            priority: task.priority,
+            duration: duration,
+            taskId: task.id,
+          },
+        }
+      })
+  }, [flexibleTasks])
 
-  return (
-    <div
-      className="flex flex-col h-full w-full px-2 py-1 overflow-hidden rounded-[6px] cursor-pointer"
-      style={{
-        backgroundColor: isGoogle ? '#d1fae5' : '#EEF2FF',
-        borderLeft: `3px solid ${isGoogle ? '#10b981' : '#6366F1'}`,
-      }}
-    >
-      <p
-        className="text-[11px] font-semibold leading-tight truncate"
-        style={{ color: isGoogle ? '#065f46' : '#3730A3' }}
+  // Combinar eventos programados con tareas flexibles
+  const allEvents = useMemo(() => {
+    return [...initialEvents, ...taskEvents]
+  }, [initialEvents, taskEvents])
+
+  const renderEventContent = (eventInfo: any) => {
+    const isGoogle = eventInfo.event.extendedProps?.source === 'google'
+    const isTask = eventInfo.event.extendedProps?.source === 'flexible_task'
+
+    return (
+      <div
+        className="flex flex-col h-full w-full px-2 py-1 overflow-hidden rounded-[6px] cursor-pointer"
+        style={{
+          backgroundColor: isGoogle ? '#d1fae5' : isTask ? '#FEF3C7' : '#EEF2FF',
+          borderLeft: `3px solid ${isGoogle ? '#10b981' : isTask ? '#F59E0B' : '#6366F1'}`,
+        }}
       >
-        {/* Icono para distinguir origen */}
-        {isGoogle && <span className="mr-1">📅</span>}
-        {eventInfo.event.title}
-      </p>
-      <p
-        className="text-[10px] leading-tight mt-0.5 opacity-70"
-        style={{ color: isGoogle ? '#065f46' : '#3730A3' }}
-      >
-        {eventInfo.timeText}
-      </p>
-    </div>
-  )
-}
+        <p
+          className="text-[11px] font-semibold leading-tight truncate"
+          style={{ color: isGoogle ? '#065f46' : isTask ? '#92400E' : '#3730A3' }}
+        >
+          {/* Icono para distinguir origen */}
+          {isGoogle && <span className="mr-1">📅</span>}
+          {isTask && <span className="mr-1">📝</span>}
+          {eventInfo.event.title}
+        </p>
+        <p
+          className="text-[10px] leading-tight mt-0.5 opacity-70"
+          style={{ color: isGoogle ? '#065f46' : isTask ? '#92400E' : '#3730A3' }}
+        >
+          {eventInfo.timeText}
+        </p>
+      </div>
+    )
+  }
 
 
   return (
@@ -64,7 +101,7 @@ export default function CalendarView({ initialEvents, flexibleTasks }: CalendarP
         }}
         locales={[esLocale]}
         locale="es"
-        events={initialEvents}
+        events={allEvents}
         eventContent={renderEventContent}
         editable={true}
         selectable={true}

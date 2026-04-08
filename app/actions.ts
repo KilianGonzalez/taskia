@@ -13,11 +13,19 @@ import {
 
 export async function getFlexibleTasks(userId?: string) {
   const supabase = await createClient();
-  if (!userId) return [];
+  
+  // Si no se proporciona userId, obtener el usuario autenticado
+  let targetUserId = userId;
+  if (!targetUserId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    targetUserId = user.id;
+  }
+  
   const { data, error } = await supabase
     .from('flexible_tasks')
     .select('*')
-    .eq('user_id', userId)
+    .eq('user_id', targetUserId)
     .order('due_date', { ascending: true })
   if (error) { console.error('Error fetching tasks:', error); return [] }
   return data || []

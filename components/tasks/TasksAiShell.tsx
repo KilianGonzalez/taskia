@@ -17,17 +17,13 @@ type Task = {
   title: string;
   category?: string;
   priority?: string;
-  dueDate?: string;
-  duedate?: string;
-  estimatedDuration?: number;
-  estimatedduration?: number;
+  due_date?: string;
+  estimated_duration_min?: number;
   difficulty?: number;
   notes?: string;
   completed?: boolean;
-  completedAt?: string;
-  completedat?: string;
-  createdAt?: string;
-  createdat?: string;
+  completed_at?: string;
+  created_at?: string;
 };
 
 type TasksAiShellProps = {
@@ -60,7 +56,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
   const longTasks = useMemo(
     () =>
       pendingTasks.filter(
-        (task) => (task.estimatedduration ?? task.estimatedDuration ?? 0) >= 90
+        (task) => (task.estimated_duration_min ?? 0) >= 90
       ),
     [pendingTasks]
   );
