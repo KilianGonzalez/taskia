@@ -2,221 +2,403 @@
 
 import { useMemo, useState } from "react";
 import {
-  Sparkles,
-  BookOpen,
-  CalendarClock,
-  Target,
-  TrendingUp,
-  Trophy,
-  Flame,
-  Brain,
+    suggestGoalSessions,
+    createTasksFromSuggestedSessions,
+} from "@/app/actions";
+import {
+    Sparkles,
+    BookOpen,
+    CalendarClock,
+    Target,
+    TrendingUp,
+    Trophy,
+    Flame,
+    Brain,
+    X,
+    Loader2,
+    AlertCircle,
 } from "lucide-react";
 import { GoalsClient } from "@/app/(dashboard)/dashboard/goals/goals-client";
 
 type Goal = {
-  id: string;
-  title: string;
-  description?: string;
-  category?: "academic" | "personal" | "habit";
-  currentvalue: number;
-  targetvalue: number;
-  unit: string;
-  duedate?: string;
-  status?: "active" | "completed" | "paused";
-  streak?: number;
-  createdat?: string;
+    id: string;
+    title: string;
+    description?: string;
+    category?: "academic" | "personal" | "habit";
+    currentvalue: number;
+    targetvalue: number;
+    unit: string;
+    duedate?: string;
+    status?: "active" | "completed" | "paused";
+    streak?: number;
+    createdat?: string;
+};
+
+type SuggestedSession = {
+    title: string;
+    durationMin: number;
+    focus: string;
+    reason: string;
+};
+
+type GoalPlanResult = {
+    summary: string;
+    sessions: SuggestedSession[];
 };
 
 type GoalsAiShellProps = {
-  initialGoals: Goal[];
+    initialGoals: Goal[];
 };
 
 export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
-  const [command, setCommand] = useState("");
+    const [command, setCommand] = useState("");
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState("");
+    const [planOpen, setPlanOpen] = useState(false);
+    const [planGoalTitle, setPlanGoalTitle] = useState("");
+    const [suggestedPlan, setSuggestedPlan] = useState<GoalPlanResult | null>(null);
+    const [savingTasks, setSavingTasks] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState("");
 
-  const activeGoals = useMemo(
-    () => initialGoals.filter((goal) => goal.status !== "completed"),
-    [initialGoals]
-  );
-
-  const completedGoals = useMemo(
-    () => initialGoals.filter((goal) => goal.status === "completed"),
-    [initialGoals]
-  );
-
-  const academicGoals = useMemo(
-    () => activeGoals.filter((goal) => goal.category === "academic"),
-    [activeGoals]
-  );
-
-  const avgProgress = useMemo(() => {
-    if (!activeGoals.length) return 0;
-
-    return Math.round(
-      activeGoals.reduce((acc, goal) => {
-        const progress =
-          goal.targetvalue > 0
-            ? Math.min(100, Math.round((goal.currentvalue / goal.targetvalue) * 100))
-            : 0;
-
-        return acc + progress;
-      }, 0) / activeGoals.length
+    const activeGoals = useMemo(
+        () => initialGoals.filter((goal) => goal.status !== "completed"),
+        [initialGoals]
     );
-  }, [activeGoals]);
 
-  const maxStreak = useMemo(
-    () => initialGoals.reduce((max, goal) => Math.max(max, goal.streak ?? 0), 0),
-    [initialGoals]
-  );
+    const completedGoals = useMemo(
+        () => initialGoals.filter((goal) => goal.status === "completed"),
+        [initialGoals]
+    );
 
-  const suggestion = useMemo(() => {
-    if (academicGoals.length > 0) {
-      return {
-        title: "Convierte objetivos en sesiones",
-        text: `Tienes ${academicGoals.length} objetivo${
-          academicGoals.length === 1 ? "" : "s"
-        } académico${
-          academicGoals.length === 1 ? "" : "s"
-        } activo${academicGoals.length === 1 ? "" : "s"} listo${
-          academicGoals.length === 1 ? "" : "s"
-        } para planificar.`,
-        style: "bg-emerald-50 border-emerald-100 text-emerald-700",
-      };
+    const academicGoals = useMemo(
+        () => activeGoals.filter((goal) => goal.category === "academic"),
+        [activeGoals]
+    );
+
+    const selectedAcademicGoal = useMemo(() => {
+        return activeGoals.find((goal) => goal.category === "academic") ?? null;
+    }, [activeGoals]);
+
+    const avgProgress = useMemo(() => {
+        if (!activeGoals.length) return 0;
+
+        return Math.round(
+            activeGoals.reduce((acc, goal) => {
+                const progress =
+                    goal.targetvalue > 0
+                        ? Math.min(100, Math.round((goal.currentvalue / goal.targetvalue) * 100))
+                        : 0;
+
+                return acc + progress;
+            }, 0) / activeGoals.length
+        );
+    }, [activeGoals]);
+
+    const maxStreak = useMemo(
+        () => initialGoals.reduce((max, goal) => Math.max(max, goal.streak ?? 0), 0),
+        [initialGoals]
+    );
+
+    const suggestion = useMemo(() => {
+        if (academicGoals.length > 0) {
+            return {
+                title: "Convierte objetivos en sesiones",
+                text: `Tienes ${academicGoals.length} objetivo${academicGoals.length === 1 ? "" : "s"
+                    } académico${academicGoals.length === 1 ? "" : "s"
+                    } activo${academicGoals.length === 1 ? "" : "s"} listo${academicGoals.length === 1 ? "" : "s"
+                    } para planificar.`,
+                style: "bg-emerald-50 border-emerald-100 text-emerald-700",
+            };
+        }
+
+        if (activeGoals.length > 0) {
+            return {
+                title: "Mantén el seguimiento",
+                text: "Actualiza el progreso de tus objetivos para que la IA pueda priorizar mejor tu semana.",
+                style: "bg-sky-50 border-sky-100 text-sky-700",
+            };
+        }
+
+        return {
+            title: "Empieza por tu próximo hito",
+            text: "Crea tu primer objetivo para que TaskIA pueda ayudarte a convertirlo en progreso real.",
+            style: "bg-violet-50 border-violet-100 text-violet-700",
+        };
+    }, [academicGoals.length, activeGoals.length]);
+
+    async function handleSuggestSessions() {
+        setAiError("");
+        setSuggestedPlan(null);
+
+        if (!selectedAcademicGoal) {
+            setAiError("No tienes ningún objetivo académico activo.");
+            return;
+        }
+
+        setAiLoading(true);
+
+        const res = (await suggestGoalSessions(selectedAcademicGoal.id)) as {
+            error?: string;
+            data?: GoalPlanResult;
+        };
+
+        setAiLoading(false);
+
+        if (res?.error) {
+            setAiError(res.error);
+            return;
+        }
+
+        if (res?.data) {
+            setPlanGoalTitle(selectedAcademicGoal.title);
+            setSuggestedPlan(res.data);
+            setPlanOpen(true);
+        }
     }
 
-    if (activeGoals.length > 0) {
-      return {
-        title: "Mantén el seguimiento",
-        text: "Actualiza el progreso de tus objetivos para que la IA pueda priorizar mejor tu semana.",
-        style: "bg-sky-50 border-sky-100 text-sky-700",
-      };
+    async function handleSaveSuggestedSessions() {
+        if (!selectedAcademicGoal || !suggestedPlan?.sessions?.length) {
+            setAiError("No hay sesiones para guardar.");
+            return;
+        }
+
+        setAiError("");
+        setSaveSuccess("");
+        setSavingTasks(true);
+
+        const res = await createTasksFromSuggestedSessions({
+            goalId: selectedAcademicGoal.id,
+            goalTitle: selectedAcademicGoal.title,
+            sessions: suggestedPlan.sessions,
+        });
+
+        setSavingTasks(false);
+
+        if (res?.error) {
+            setAiError(res.error);
+            return;
+        }
+
+        setSaveSuccess(`${res.created ?? suggestedPlan.sessions.length} tareas creadas correctamente.`);
+        setPlanOpen(false);
     }
 
-    return {
-      title: "Empieza por tu próximo hito",
-      text: "Crea tu primer objetivo para que TaskIA pueda ayudarte a convertirlo en progreso real.",
-      style: "bg-violet-50 border-violet-100 text-violet-700",
-    };
-  }, [academicGoals.length, activeGoals.length]);
-
-  return (
-    <div className="min-h-full bg-[#f8fafc] p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#0f172a]">Mis Objetivos</h1>
-        <p className="text-sm text-gray-400 mt-0.5">
-          Sigue tu progreso y deja que la IA te ayude a convertir metas en sesiones
-        </p>
-      </div>
-
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_0.9fr_1.35fr] gap-4 xl:items-center">          <div className="flex items-start gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5" />
+    return (
+        <div className="min-h-full bg-[#f8fafc] p-6 space-y-6">
+            <div>
+                <h1 className="text-2xl font-bold text-[#0f172a]">Mis Objetivos</h1>
+                <p className="text-sm text-gray-400 mt-0.5">
+                    Sigue tu progreso y deja que la IA te ayude a convertir metas en sesiones
+                </p>
             </div>
 
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#0f172a]">Asistente IA</p>
-              <p className="text-xs text-gray-400 mb-2">
-                Sugerencias rápidas para tus objetivos
-              </p>
+            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
+                <div className="grid grid-cols-1 xl:grid-cols-[1fr_0.9fr_1.35fr] gap-4 xl:items-center">
+                    <div className="flex items-start gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shrink-0">
+                            <Sparkles className="w-5 h-5" />
+                        </div>
 
-              <div className={`rounded-xl border px-3 py-2.5 ${suggestion.style}`}>
-                <p className="text-sm font-semibold">{suggestion.title}</p>
-                <p className="text-xs mt-0.5 opacity-90">{suggestion.text}</p>
-              </div>
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[#0f172a]">Asistente IA</p>
+                            <p className="text-xs text-gray-400 mb-2">
+                                Sugerencias rápidas para tus objetivos
+                            </p>
+
+                            <div className={`rounded-xl border px-3 py-2.5 ${suggestion.style}`}>
+                                <p className="text-sm font-semibold">{suggestion.title}</p>
+                                <p className="text-xs mt-0.5 opacity-90">{suggestion.text}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 max-w-[340px] w-full justify-self-center">
+                        <button
+                            type="button"
+                            onClick={handleSuggestSessions}
+                            disabled={aiLoading || !selectedAcademicGoal}
+                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {aiLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <BookOpen className="w-4 h-4" />
+                            )}
+                            {aiLoading ? "Generando..." : "Crear sesiones"}
+                        </button>
+
+                        <button
+                            type="button"
+                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                        >
+                            <CalendarClock className="w-4 h-4" />
+                            Al calendario
+                        </button>
+
+                        <button
+                            type="button"
+                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                        >
+                            <Target className="w-4 h-4" />
+                            Priorizar
+                        </button>
+
+                        <button
+                            type="button"
+                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                        >
+                            <Brain className="w-4 h-4" />
+                            Repartir semana
+                        </button>
+                    </div>
+
+                    <div className="w-full xl:max-w-[620px] xl:justify-self-end">
+                        <div className="flex gap-2">
+                            <input
+                                value={command}
+                                onChange={(e) => setCommand(e.target.value)}
+                                placeholder='Ej. "Divide historia en 4 sesiones antes del viernes"'
+                                className="flex-1 h-12 rounded-xl border border-gray-200 px-4 text-sm text-gray-700 outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                            />
+                            <button
+                                type="button"
+                                className="h-12 px-6 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all shrink-0"
+                                style={{ background: "linear-gradient(90deg, #10b981, #059669)" }}
+                            >
+                                Probar
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-2 max-w-[340px] w-full justify-self-center">
-            <button
-              type="button"
-              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
-            >
-              <BookOpen className="w-4 h-4" />
-              Crear sesiones
-            </button>
+            {aiError ? (
+                <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 flex items-start gap-2 text-red-600">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <p className="text-sm">{aiError}</p>
+                </div>
+            ) : null}
 
-            <button
-              type="button"
-              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
-            >
-              <CalendarClock className="w-4 h-4" />
-              Al calendario
-            </button>
+            {saveSuccess ? (
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-emerald-700">
+                    <p className="text-sm font-medium">{saveSuccess}</p>
+                </div>
+            ) : null}
 
-            <button
-              type="button"
-              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
-            >
-              <Target className="w-4 h-4" />
-              Priorizar
-            </button>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                    <div className="flex items-center gap-2 text-emerald-600">
+                        <TrendingUp className="w-4 h-4" />
+                        <span className="text-sm font-medium">Progreso medio</span>
+                    </div>
+                    <p className="mt-2 text-2xl font-bold text-[#0f172a]">{avgProgress}%</p>
+                </div>
 
-            <button
-              type="button"
-              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
-            >
-              <Brain className="w-4 h-4" />
-              Repartir semana
-            </button>
-          </div>
+                <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                    <div className="flex items-center gap-2 text-orange-500">
+                        <Flame className="w-4 h-4" />
+                        <span className="text-sm font-medium">Mejor racha</span>
+                    </div>
+                    <p className="mt-2 text-2xl font-bold text-[#0f172a]">{maxStreak}</p>
+                </div>
 
-            <div className="w-full xl:max-w-[620px] xl:justify-self-end">            <div className="flex gap-2">
-              <input
-                value={command}
-                onChange={(e) => setCommand(e.target.value)}
-                placeholder='Ej. "Divide historia en 4 sesiones antes del viernes"'
-                className="flex-1 h-11 rounded-xl border border-gray-200 px-3 text-sm text-gray-700 outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-              />
-              <button
-                type="button"
-                className="h-11 px-5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all shrink-0"
-                style={{ background: "linear-gradient(90deg, #10b981, #059669)" }}
-              >
-                Probar
-              </button>
+                <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                    <div className="flex items-center gap-2 text-violet-600">
+                        <Trophy className="w-4 h-4" />
+                        <span className="text-sm font-medium">Completados</span>
+                    </div>
+                    <p className="mt-2 text-2xl font-bold text-[#0f172a]">{completedGoals.length}</p>
+                </div>
+
+                <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                    <div className="flex items-center gap-2 text-sky-600">
+                        <Target className="w-4 h-4" />
+                        <span className="text-sm font-medium">Activos</span>
+                    </div>
+                    <p className="mt-2 text-2xl font-bold text-[#0f172a]">{activeGoals.length}</p>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-emerald-600">
-            <TrendingUp className="w-4 h-4" />
-            <span className="text-sm font-medium">Progreso medio</span>
-          </div>
-          <p className="mt-2 text-2xl font-bold text-[#0f172a]">{avgProgress}%</p>
-        </div>
+            {planOpen && suggestedPlan ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        onClick={() => setPlanOpen(false)}
+                    />
+                    <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-[#0f172a]">
+                                    Sesiones sugeridas
+                                </h3>
+                                <p className="text-sm text-gray-400 mt-0.5">{planGoalTitle}</p>
+                            </div>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-orange-500">
-            <Flame className="w-4 h-4" />
-            <span className="text-sm font-medium">Mejor racha</span>
-          </div>
-          <p className="mt-2 text-2xl font-bold text-[#0f172a]">{maxStreak}</p>
-        </div>
+                            <button
+                                type="button"
+                                onClick={() => setPlanOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-violet-600">
-            <Trophy className="w-4 h-4" />
-            <span className="text-sm font-medium">Completados</span>
-          </div>
-          <p className="mt-2 text-2xl font-bold text-[#0f172a]">{completedGoals.length}</p>
-        </div>
+                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                            <p className="text-sm font-semibold text-emerald-700">Resumen</p>
+                            <p className="text-sm text-emerald-600 mt-1">{suggestedPlan.summary}</p>
+                        </div>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-sky-600">
-            <Target className="w-4 h-4" />
-            <span className="text-sm font-medium">Activos</span>
-          </div>
-          <p className="mt-2 text-2xl font-bold text-[#0f172a]">{activeGoals.length}</p>
-        </div>
-      </div>
+                        <div className="space-y-3">
+                            {suggestedPlan.sessions.map((session, index) => (
+                                <div
+                                    key={`${session.title}-${index}`}
+                                    className="rounded-2xl border border-gray-100 bg-[#f8fafc] p-4"
+                                >
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-[#0f172a]">
+                                                {session.title}
+                                            </p>
+                                            <p className="text-xs text-gray-400 mt-1">{session.focus}</p>
+                                        </div>
 
-      <div className="rounded-3xl overflow-hidden">
-        <GoalsClient initialGoals={initialGoals as any} />
-      </div>
-    </div>
-  );
+                                        <span className="shrink-0 rounded-full bg-white border border-gray-200 px-2.5 py-1 text-xs font-semibold text-gray-600">
+                                            {session.durationMin} min
+                                        </span>
+                                    </div>
+
+                                    <p className="text-sm text-gray-500 mt-3">{session.reason}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-1">
+                            <button
+                                type="button"
+                                onClick={() => setPlanOpen(false)}
+                                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                            >
+                                Cerrar
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleSaveSuggestedSessions}
+                                disabled={savingTasks}
+                                className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center gap-2"
+                                style={{ background: "linear-gradient(90deg, #10b981, #059669)" }}
+                            >
+                                {savingTasks ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                {savingTasks ? "Guardando..." : "Guardar como tareas"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+
+            <div className="rounded-3xl overflow-hidden">
+                <GoalsClient initialGoals={initialGoals as any} />
+            </div>
+        </div>
+    );
 }
