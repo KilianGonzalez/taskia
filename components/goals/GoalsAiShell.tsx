@@ -5,6 +5,7 @@ import {
     suggestGoalSessions,
     createTasksFromSuggestedSessions,
     prioritizeGoal,
+    distributeWeeklyTasks,
 } from "@/app/actions";
 import {
     Sparkles,
@@ -62,6 +63,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
     const [savingTasks, setSavingTasks] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState("");
     const [prioritizeModalOpen, setPrioritizeModalOpen] = useState(false);
+    const [sessionsModalOpen, setSessionsModalOpen] = useState(false);
 
     const activeGoals = useMemo(
         () => initialGoals.filter((goal) => goal.status !== "completed"),
@@ -131,17 +133,21 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
 
     async function handleSuggestSessions() {
         setAiError("");
-        setSuggestedPlan(null);
 
-        if (!selectedAcademicGoal) {
+        if (academicGoals.length === 0) {
             setAiError("No tienes ningún objetivo académico activo.");
             return;
         }
 
+        setSessionsModalOpen(true);
+    }
+
+    async function handleSelectGoalForSessions(goalId: string) {
         setAiLoading(true);
+        setSessionsModalOpen(false);
 
         try {
-            const res = (await suggestGoalSessions(selectedAcademicGoal.id)) as {
+            const res = (await suggestGoalSessions(goalId)) as {
                 error?: string;
                 data?: GoalPlanResult;
             };
@@ -155,7 +161,8 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
 
             if (res?.data) {
                 console.log('Sesiones sugeridas:', res.data);
-                setPlanGoalTitle(selectedAcademicGoal.title);
+                const selectedGoal = academicGoals.find(g => g.id === goalId);
+                setPlanGoalTitle(selectedGoal?.title || '');
                 setSuggestedPlan(res.data);
                 setPlanOpen(true);
             }
@@ -229,6 +236,31 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
         }
     }
 
+    async function handleDistributeWeeklyTasks() {
+        setAiError("");
+        setAiLoading(true);
+
+        try {
+            const res = await distributeWeeklyTasks();
+            setAiLoading(false);
+
+            if (res?.error) {
+                setAiError(res.error);
+                return;
+            }
+
+            setSaveSuccess(res.message || "Tareas repartidas correctamente.");
+            
+            // Limpiar el mensaje de éxito después de 3 segundos
+            setTimeout(() => setSaveSuccess(""), 3000);
+            
+        } catch (error) {
+            console.error('Error repartiendo tareas semanales:', error);
+            setAiError("Error al repartir tareas semanales.");
+            setAiLoading(false);
+        }
+    }
+
     return (
         <div className="min-h-full bg-[#f8fafc] p-6 space-y-6">
             <div>
@@ -262,7 +294,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                         <button
                             type="button"
                             onClick={handleSuggestSessions}
-                            disabled={aiLoading || !selectedAcademicGoal}
+                            disabled={aiLoading || academicGoals.length === 0}
                             className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {aiLoading ? (
@@ -271,14 +303,6 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                 <BookOpen className="w-4 h-4" />
                             )}
                             {aiLoading ? "Generando..." : "Crear sesiones"}
-                        </button>
-
-                        <button
-                            type="button"
-                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
-                        >
-                            <CalendarClock className="w-4 h-4" />
-                            Al calendario
                         </button>
 
                         <button
@@ -293,14 +317,6 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                 <Target className="w-4 h-4" />
                             )}
                             {aiLoading ? "Priorizando..." : "Priorizar"}
-                        </button>
-
-                        <button
-                            type="button"
-                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
-                        >
-                            <Brain className="w-4 h-4" />
-                            Repartir semana
                         </button>
                     </div>
 
@@ -582,6 +598,117 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                             <button
                                 type="button"
                                 onClick={() => setPrioritizeModalOpen(false)}
+                                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {sessionsModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        onClick={() => setSessionsModalOpen(false)}
+                    />
+                    <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-[#0f172a]">
+                                    Seleccionar objetivo para sesiones
+                                </h3>
+                                <p className="text-sm text-gray-400 mt-0.5">
+                                    Elige qué objetivo académico quieres convertir en sesiones de estudio
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setSessionsModalOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                            {academicGoals.map((goal) => {
+                                const progress = goal.target_value > 0 
+                                    ? Math.min(100, Math.round((goal.current_value / goal.target_value) * 100))
+                                    : 0;
+                                
+                                const priorityColors = {
+                                    low: "bg-gray-100 text-gray-600 border-gray-300",
+                                    medium: "bg-blue-100 text-blue-600 border-blue-300",
+                                    high: "bg-red-100 text-red-600 border-red-300"
+                                };
+
+                                const priorityLabels = {
+                                    low: "Baja",
+                                    medium: "Media",
+                                    high: "Alta"
+                                };
+
+                                const currentPriority = goal.priority || 'medium';
+
+                                return (
+                                    <button
+                                        key={goal.id}
+                                        onClick={() => handleSelectGoalForSessions(goal.id)}
+                                        className="w-full rounded-2xl border border-gray-200 bg-[#f8fafc] p-4 hover:bg-white hover:border-emerald-300 transition-all text-left"
+                                    >
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <h4 className="text-sm font-semibold text-[#0f172a] truncate">
+                                                        {goal.title}
+                                                    </h4>
+                                                    <span className="shrink-0 rounded-full px-2 py-1 text-xs font-medium border bg-emerald-100 text-emerald-700 border-emerald-200">
+                                                        Académico
+                                                    </span>
+                                                    <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium border ${priorityColors[currentPriority]}`}>
+                                                        {priorityLabels[currentPriority]}
+                                                    </span>
+                                                </div>
+                                                
+                                                {goal.description && (
+                                                    <p className="text-xs text-gray-500 mb-2 line-clamp-2">
+                                                        {goal.description}
+                                                    </p>
+                                                )}
+
+                                                <div className="flex items-center gap-4 text-xs text-gray-400">
+                                                    <span>
+                                                        Progreso: {goal.current_value}/{goal.target_value} {goal.unit}
+                                                    </span>
+                                                    <span>
+                                                        {progress}% completado
+                                                    </span>
+                                                    {goal.due_date && (
+                                                        <span>
+                                                            Límite: {new Date(goal.due_date).toLocaleDateString()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="shrink-0">
+                                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center">
+                                                    <BookOpen className="w-5 h-5" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-1">
+                            <button
+                                type="button"
+                                onClick={() => setSessionsModalOpen(false)}
                                 className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
                             >
                                 Cancelar

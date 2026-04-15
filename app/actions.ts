@@ -367,6 +367,122 @@ export async function prioritizeGoal(goalId: string, action?: 'up' | 'down' | 'a
   }
 }
 
+export async function distributeWeeklyTasks() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  try {
+    // Obtener todas las tareas sin asignar (sin fecha específica)
+    const { data: unscheduledTasks, error: tasksError } = await supabase
+      .from('flexible_tasks')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('completed', false)
+      .is('due_date', null)
+      .order('priority', { ascending: false })
+
+    if (tasksError) return { error: tasksError.message }
+    if (!unscheduledTasks || unscheduledTasks.length === 0) {
+      return { error: 'No hay tareas pendientes por repartir' }
+    }
+
+    // Obtener los objetivos activos para considerar prioridades
+    const { data: activeGoals, error: goalsError } = await supabase
+      .from('goals')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+
+    if (goalsError) return { error: goalsError.message }
+
+    // Calcular días de la semana (lunes a domingo)
+    const today = new Date()
+    const currentDay = today.getDay() // 0 = domingo, 1 = lunes, etc.
+    const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay
+    const monday = new Date(today)
+    monday.setDate(today.getDate() + mondayOffset)
+    monday.setHours(0, 0, 0, 0)
+
+    const weekDays = []
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(monday)
+      day.setDate(monday.getDate() + i)
+      weekDays.push(day)
+    }
+
+    // Distribución inteligente de tareas
+    const distributedTasks = []
+    const tasksPerDay = Math.ceil(unscheduledTasks.length / 7)
+    
+    // Ordenar tareas por prioridad y duración
+    const sortedTasks = unscheduledTasks.sort((a, b) => {
+      // Primero por prioridad
+      const priorityOrder = { high: 3, medium: 2, low: 1 }
+      const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 1
+      const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 1
+      
+      if (aPriority !== bPriority) return bPriority - aPriority
+      
+      // Luego por duración (más cortas primero)
+      return (a.estimated_duration_min || 30) - (b.estimated_duration_min || 30)
+    })
+
+    // Distribuir tareas considerando la carga diaria
+    let taskIndex = 0
+    for (let dayIndex = 0; dayIndex < weekDays.length && taskIndex < sortedTasks.length; dayIndex++) {
+      const currentDay = weekDays[dayIndex]
+      let dailyMinutes = 0
+      const maxDailyMinutes = 120 // Máximo 2 horas por día
+
+      // Asignar tareas a este día
+      while (taskIndex < sortedTasks.length && dailyMinutes < maxDailyMinutes) {
+        const task = sortedTasks[taskIndex]
+        const taskDuration = task.estimated_duration_min || 30
+        
+        if (dailyMinutes + taskDuration <= maxDailyMinutes) {
+          // Asignar tarea a este día
+          const dueDate = new Date(currentDay)
+          dueDate.setHours(9 + Math.floor(dailyMinutes / 60), (dailyMinutes % 60), 0, 0)
+          
+          distributedTasks.push({
+            ...task,
+            due_date: dueDate.toISOString()
+          })
+          
+          dailyMinutes += taskDuration
+          taskIndex++
+        } else {
+          break
+        }
+      }
+    }
+
+    // Actualizar tareas en la base de datos
+    if (distributedTasks.length > 0) {
+      const { error: updateError } = await supabase
+        .from('flexible_tasks')
+        .upsert(distributedTasks, { onConflict: 'id' })
+
+      if (updateError) return { error: updateError.message }
+    }
+
+    revalidatePath('/dashboard/calendar')
+    revalidatePath('/dashboard/tasks')
+    
+    return { 
+      success: true, 
+      message: `Se han repartido ${distributedTasks.length} tareas durante esta semana`,
+      distributed: distributedTasks.length,
+      remaining: unscheduledTasks.length - distributedTasks.length
+    }
+
+  } catch (error) {
+    console.error('Error distribuyendo tareas semanales:', error)
+    return { error: 'Error al distribuir tareas semanales' }
+  }
+}
+
 export async function deleteGoal(goalId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
