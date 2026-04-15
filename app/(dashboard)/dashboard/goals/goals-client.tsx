@@ -22,6 +22,7 @@ interface Goal {
   status: 'active' | 'completed' | 'paused'
   streak?: number
   created_at: string
+  priority?: 'low' | 'medium' | 'high'
 }
 
 // ── Config visual ──────────────────────────────────────
@@ -46,7 +47,7 @@ function NewGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [error, setError] = useState('')
   const [form, setForm] = useState({
     title: '', description: '', category: 'academic',
-    target_value: '100', unit: '%', due_date: '',
+    target_value: '100', unit: '%', due_date: '', priority: 'medium' as 'low' | 'medium' | 'high',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,6 +62,7 @@ function NewGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
       target_value: Number(form.target_value),
       unit: form.unit || '%',
       due_date: form.due_date || undefined,
+      priority: form.priority,
     })
     setLoading(false)
     if (res.error) { setError(res.error); return }
@@ -139,6 +141,31 @@ function NewGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
             <input type="date" value={form.due_date}
               onChange={e => setForm({ ...form, due_date: e.target.value })}
               className={inputClass} />
+          </div>
+
+          {/* Prioridad */}
+          <div>
+            <label className={labelClass}>Prioridad</label>
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              {[
+                { key: 'low', label: 'Baja', color: 'bg-gray-50 text-gray-600 border-gray-200' },
+                { key: 'medium', label: 'Media', color: 'bg-blue-50 text-blue-600 border-blue-200' },
+                { key: 'high', label: 'Alta', color: 'bg-red-50 text-red-600 border-red-200' }
+              ].map(({ key, label, color }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setForm({ ...form, priority: key as 'low' | 'medium' | 'high' })}
+                  className={`px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
+                    form.priority === key
+                      ? `${color} border-current`
+                      : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {error && (

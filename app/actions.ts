@@ -211,14 +211,56 @@ export async function updateFlexibleTask(taskId: string, updates: {
     .eq('id', taskId)
     .eq('user_id', user.id)
 
-  if (error) return { error: error.message }
-  revalidatePath('/dashboard/calendar')
+  if (taskError) return { error: taskError.message }
+
+  const { data: goal } = await supabase
+    .from('goals')
+    .select('target_value')
+    .eq('id', goalId)
+    .single()
+
+  const isCompleted = goal ? newValue >= goal.target_value : false
+
+  const { error: updateError } = await supabase
+    .from('goals')
+    .update({
+      current_value: newValue,
+      status: isCompleted ? 'completed' : 'active',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', goalId)
+    .eq('user_id', user.id)
+
   return { success: true }
 }
 
+export async function updateGoalProgress(goalId: string, newValue: number) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
 
-// ── GOALS ──────────────────────────────────────────────
+  const { data: goal } = await supabase
+    .from('goals')
+    .select('target_value')
+    .eq('id', goalId)
+    .single()
 
+  const isCompleted = goal ? newValue >= goal.target_value : false
+
+  const { error: dbError } = await supabase
+    .from('goals')
+    .update({
+      current_value: newValue,
+      status: isCompleted ? 'completed' : 'active',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', goalId)
+    .eq('user_id', user.id)
+
+  if (dbError) return { error: dbError.message }
+  revalidatePath('/dashboard/goals')
+  return { success: true }
+}
 
 export async function createGoal(formData: {
   title: string
@@ -227,11 +269,11 @@ export async function createGoal(formData: {
   target_value: number
   unit: string
   due_date?: string
+  priority?: 'low' | 'medium' | 'high'
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
-
 
   const { error } = await supabase
     .from('goals')
@@ -243,51 +285,92 @@ export async function createGoal(formData: {
       streak: 0,
     })
 
-
   if (error) return { error: error.message }
   revalidatePath('/dashboard/goals')
   return { success: true }
 }
 
-
-export async function updateGoalProgress(goalId: string, newValue: number) {
+export async function prioritizeGoal(goalId: string, action?: 'up' | 'down' | 'auto') {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-
+  // Obtener el objetivo actual
   const { data: goal } = await supabase
     .from('goals')
-    .select('target_value')
+    .select('*')
     .eq('id', goalId)
+    .eq('user_id', user.id)
     .single()
 
+  if (!goal) return { error: 'Objetivo no encontrado' }
 
-  const isCompleted = goal ? newValue >= goal.target_value : false
+  let newPriority: 'low' | 'medium' | 'high'
 
+  if (action === 'auto') {
+    // Detección automática basada en fecha de entrega y prioridad actual
+    const now = new Date()
+    const dueDate = goal.due_date ? new Date(goal.due_date) : null
+    const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null
 
-  const { error } = await supabase
+    // Lógica de prioridad automática
+    if (daysUntilDue !== null) {
+      if (daysUntilDue <= 7) {
+        newPriority = 'high' // Menos de 1 semana = alta prioridad
+      } else if (daysUntilDue <= 21) {
+        newPriority = 'medium' // Menos de 3 semanas = media prioridad
+      } else {
+        newPriority = 'low' // Más de 3 semanas = baja prioridad
+      }
+    } else {
+      // Sin fecha límite, mantener prioridad media
+      newPriority = 'medium'
+    }
+  } else if (action === 'up') {
+    // Subir prioridad
+    const priorities: ('low' | 'medium' | 'high')[] = ['low', 'medium', 'high']
+    const currentIndex = priorities.indexOf(goal.priority || 'medium')
+    newPriority = priorities[Math.min(currentIndex + 1, 2)]
+  } else if (action === 'down') {
+    // Bajar prioridad
+    const priorities: ('low' | 'medium' | 'high')[] = ['low', 'medium', 'high']
+    const currentIndex = priorities.indexOf(goal.priority || 'medium')
+    newPriority = priorities[Math.max(currentIndex - 1, 0)]
+  } else {
+    // Por defecto, poner en alta
+    newPriority = 'high'
+  }
+
+  // Actualizar el objetivo con la nueva prioridad
+  const { error: updateError } = await supabase
     .from('goals')
     .update({
-      current_value: newValue,
-      status: isCompleted ? 'completed' : 'active',
+      priority: newPriority,
       updated_at: new Date().toISOString(),
     })
     .eq('id', goalId)
     .eq('user_id', user.id)
 
-
-  if (error) return { error: error.message }
+  if (updateError) return { error: updateError.message }
   revalidatePath('/dashboard/goals')
-  return { success: true }
+  revalidatePath('/dashboard/calendar')
+  
+  const priorityLabels = {
+    low: 'baja',
+    medium: 'media', 
+    high: 'alta'
+  }
+  
+  return { 
+    success: true, 
+    message: `Objetivo "${goal.title}" con prioridad ${priorityLabels[newPriority]} correctamente` 
+  }
 }
-
 
 export async function deleteGoal(goalId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
-
 
   const { error } = await supabase
     .from('goals')
@@ -295,44 +378,33 @@ export async function deleteGoal(goalId: string) {
     .eq('id', goalId)
     .eq('user_id', user.id)
 
-
   if (error) return { error: error.message }
   revalidatePath('/dashboard/goals')
   return { success: true }
 }
 
-
 export async function getGoals() {
-  const supabase = await createClient();
-
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-
-  if (!user) return [];
-
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
 
   const { data, error } = await supabase
     .from("goals")
     .select("*")
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
+    .order("created_at", { ascending: false })
 
   if (error) {
-    console.error("Error fetching goals:", error);
-    return [];
+    console.error("Error fetching goals:", error)
+    return []
   }
 
-
-  return data;
+  return data
 }
-
 
 // ── AI: GOAL SESSIONS ──────────────────────────────────
 
+// ...
 type SuggestedSession = {
   title: string
   durationMin: number

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
     suggestGoalSessions,
     createTasksFromSuggestedSessions,
+    prioritizeGoal,
 } from "@/app/actions";
 import {
     Sparkles,
@@ -32,6 +33,7 @@ type Goal = {
     status?: "active" | "completed" | "paused";
     streak?: number;
     created_at?: string;
+    priority?: 'low' | 'medium' | 'high';
 };
 
 type SuggestedSession = {
@@ -59,6 +61,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
     const [suggestedPlan, setSuggestedPlan] = useState<GoalPlanResult | null>(null);
     const [savingTasks, setSavingTasks] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState("");
+    const [prioritizeModalOpen, setPrioritizeModalOpen] = useState(false);
 
     const activeGoals = useMemo(
         () => initialGoals.filter((goal) => goal.status !== "completed"),
@@ -190,6 +193,42 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
         setPlanOpen(false);
     }
 
+    async function handlePrioritizeGoals() {
+        setAiError("");
+
+        if (activeGoals.length === 0) {
+            setAiError("No tienes objetivos activos para priorizar.");
+            return;
+        }
+
+        setPrioritizeModalOpen(true);
+    }
+
+    async function handleSelectGoalToPrioritize(goalId: string, action?: 'up' | 'down' | 'auto') {
+        setAiLoading(true);
+        setPrioritizeModalOpen(false);
+
+        try {
+            const res = await prioritizeGoal(goalId, action);
+            setAiLoading(false);
+
+            if (res?.error) {
+                setAiError(res.error);
+                return;
+            }
+
+            setSaveSuccess(res.message || "Objetivo priorizado correctamente.");
+            
+            // Limpiar el mensaje de éxito después de 3 segundos
+            setTimeout(() => setSaveSuccess(""), 3000);
+            
+        } catch (error) {
+            console.error('Error priorizando objetivo:', error);
+            setAiError("Error al priorizar objetivo.");
+            setAiLoading(false);
+        }
+    }
+
     return (
         <div className="min-h-full bg-[#f8fafc] p-6 space-y-6">
             <div>
@@ -244,10 +283,16 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
 
                         <button
                             type="button"
-                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                            onClick={handlePrioritizeGoals}
+                            disabled={aiLoading}
+                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <Target className="w-4 h-4" />
-                            Priorizar
+                            {aiLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Target className="w-4 h-4" />
+                            )}
+                            {aiLoading ? "Priorizando..." : "Priorizar"}
                         </button>
 
                         <button
@@ -402,6 +447,149 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                     </div>
                 </div>
             ) : null}
+
+            {prioritizeModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        onClick={() => setPrioritizeModalOpen(false)}
+                    />
+                    <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-[#0f172a]">
+                                    Ajustar prioridad de objetivos
+                                </h3>
+                                <p className="text-sm text-gray-400 mt-0.5">
+                                    Elige un objetivo y ajusta su prioridad
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setPrioritizeModalOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                            {activeGoals.map((goal) => {
+                                const progress = goal.target_value > 0 
+                                    ? Math.min(100, Math.round((goal.current_value / goal.target_value) * 100))
+                                    : 0;
+                                
+                                const categoryColors = {
+                                    academic: "bg-emerald-100 text-emerald-700 border-emerald-200",
+                                    personal: "bg-blue-100 text-blue-700 border-blue-200",
+                                    habit: "bg-purple-100 text-purple-700 border-purple-200"
+                                };
+
+                                const priorityColors = {
+                                    low: "bg-gray-100 text-gray-600 border-gray-300",
+                                    medium: "bg-blue-100 text-blue-600 border-blue-300",
+                                    high: "bg-red-100 text-red-600 border-red-300"
+                                };
+
+                                const priorityLabels = {
+                                    low: "Baja",
+                                    medium: "Media",
+                                    high: "Alta"
+                                };
+
+                                const categoryLabels = {
+                                    academic: "Académico",
+                                    personal: "Personal",
+                                    habit: "Hábito"
+                                };
+
+                                const currentPriority = goal.priority || 'medium';
+
+                                return (
+                                    <div
+                                        key={goal.id}
+                                        className="w-full rounded-2xl border border-gray-200 bg-[#f8fafc] p-4 hover:bg-white hover:border-emerald-300 transition-all"
+                                    >
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <h4 className="text-sm font-semibold text-[#0f172a] truncate">
+                                                        {goal.title}
+                                                    </h4>
+                                                    <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium border ${categoryColors[goal.category || 'personal']}`}>
+                                                        {categoryLabels[goal.category || 'personal']}
+                                                    </span>
+                                                    <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium border ${priorityColors[currentPriority]}`}>
+                                                        {priorityLabels[currentPriority]}
+                                                    </span>
+                                                </div>
+                                                
+                                                {goal.description && (
+                                                    <p className="text-xs text-gray-500 mb-2 line-clamp-2">
+                                                        {goal.description}
+                                                    </p>
+                                                )}
+
+                                                <div className="flex items-center gap-4 text-xs text-gray-400 mb-3">
+                                                    <span>
+                                                        Progreso: {goal.current_value}/{goal.target_value} {goal.unit}
+                                                    </span>
+                                                    <span>
+                                                        {progress}% completado
+                                                    </span>
+                                                    {goal.due_date && (
+                                                        <span>
+                                                            Límite: {new Date(goal.due_date).toLocaleDateString()}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleSelectGoalToPrioritize(goal.id, 'down')}
+                                                        className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                                                    >
+                                                        <span className="mr-1">-</span> Bajar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleSelectGoalToPrioritize(goal.id, 'auto')}
+                                                        className="flex-1 px-3 py-2 rounded-lg border border-emerald-200 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-all"
+                                                    >
+                                                        <span className="mr-1">Auto</span> IA
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleSelectGoalToPrioritize(goal.id, 'up')}
+                                                        className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                                                    >
+                                                        <span className="mr-1">+</span> Subir
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="shrink-0">
+                                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center">
+                                                    <Target className="w-5 h-5" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-1">
+                            <button
+                                type="button"
+                                onClick={() => setPrioritizeModalOpen(false)}
+                                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="rounded-3xl overflow-hidden">
                 <GoalsClient initialGoals={initialGoals as any} />
