@@ -499,6 +499,276 @@ export async function deleteGoal(goalId: string) {
   return { success: true }
 }
 
+export async function prioritizeTask(taskId: string, action?: 'up' | 'down' | 'auto') {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  // Obtener la tarea actual
+  const { data: task } = await supabase
+    .from('flexible_tasks')
+    .select('*')
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!task) return { error: 'Tarea no encontrada' }
+
+  let newPriority: number
+
+  if (action === 'auto') {
+    // Detección automática basada en fecha de entrega y duración
+    const now = new Date()
+    const dueDate = task.due_date ? new Date(task.due_date) : null
+    const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null
+    const duration = task.estimated_duration_min || 30
+
+    // Lógica de prioridad automática para tareas
+    if (daysUntilDue !== null) {
+      if (daysUntilDue <= 2) {
+        newPriority = 3 // Alta prioridad
+      } else if (daysUntilDue <= 7) {
+        newPriority = 2 // Media prioridad
+      } else {
+        newPriority = 1 // Baja prioridad
+      }
+    } else {
+      // Sin fecha límite, basar en duración
+      if (duration >= 90) {
+        newPriority = 3 // Tareas largas sin fecha = alta prioridad
+      } else if (duration >= 60) {
+        newPriority = 2 // Tareas medianas = media prioridad
+      } else {
+        newPriority = 1 // Tareas cortas = baja prioridad
+      }
+    }
+  } else if (action === 'up') {
+    // Subir prioridad
+    const currentPriority = (task.priority as number) || 2
+    newPriority = Math.min(currentPriority + 1, 3)
+  } else if (action === 'down') {
+    // Bajar prioridad
+    const currentPriority = (task.priority as number) || 2
+    newPriority = Math.max(currentPriority - 1, 1)
+  } else {
+    // Por defecto, poner en alta
+    newPriority = 3
+  }
+
+  // Actualizar la tarea con la nueva prioridad
+  const { error: updateError } = await supabase
+    .from('flexible_tasks')
+    .update({
+      priority: newPriority,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+
+  if (updateError) return { error: updateError.message }
+  revalidatePath('/dashboard/tasks')
+  revalidatePath('/dashboard/calendar')
+  
+  const priorityLabels: { [key: number]: string } = {
+    1: 'baja',
+    2: 'media', 
+    3: 'alta'
+  }
+  
+  return { 
+    success: true, 
+    message: `Tarea "${task.title}" con prioridad ${priorityLabels[newPriority]} correctamente` 
+  }
+}
+
+export async function splitTaskWithAI(taskId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  // Obtener la tarea actual
+  const { data: task, error: taskError } = await supabase
+    .from('flexible_tasks')
+    .select('*')
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (taskError || !task) return { error: 'Tarea no encontrada' }
+
+  // Obtener compromisos del calendario (eventos existentes)
+  const { data: calendarEvents, error: eventsError } = await supabase
+    .from('calendar_events')
+    .select('*')
+    .eq('user_id', user.id)
+    .gte('start_time', new Date().toISOString())
+    .lte('start_time', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()) // Próxima semana
+    .order('start_time', { ascending: true })
+
+  if (eventsError) {
+    console.error('Error obteniendo eventos del calendario:', eventsError)
+    // Continuar sin eventos si hay error
+  }
+
+  // Construir prompt para la IA
+  const taskData = {
+    title: task.title,
+    description: task.notes || '',
+    duration: task.estimated_duration_min || 30,
+    difficulty: task.difficulty || 3,
+    category: task.category || 'general',
+    dueDate: task.due_date || null
+  }
+
+  const calendarInfo = calendarEvents ? calendarEvents.map(event => ({
+    title: event.title,
+    start: event.start_time,
+    end: event.end_time,
+    type: event.type || 'other'
+  })) : []
+
+  const prompt = `Divide esta tarea en sesiones más pequeñas manejables:
+
+TAREA:
+${JSON.stringify(taskData)}
+
+COMPROMISOS CALENDARIO (próxima semana):
+${JSON.stringify(calendarInfo)}
+
+Responde solo JSON:
+{"summary":"resumen breve","sessions":[{"title":"sesión","durationMin":25,"focus":"enfoque","reason":"razón","suggestedTime":"YYYY-MM-DDTHH:mm"}]}
+
+Reglas:
+- Sesiones de 25-90 min cada una
+- Evita horarios que choquen con compromisos existentes
+- Considera la dificultad de la tarea
+- Summary: máx 100 chars
+- Focus: máx 60 chars  
+- Reason: máx 80 chars
+- SuggestedTime: formato ISO, considera preferiblemente mañana/tarde
+- Máximo 5 sesiones
+- Las sesiones deben sumar aproximadamente la duración total original`
+
+  try {
+    const estimatedInputTokens = await countInputTokens(prompt)
+
+    if (estimatedInputTokens > AI_MAX_INPUT_TOKENS) {
+      await supabase.from('ai_logs').insert({
+        user_id: user.id,
+        action: 'split_task',
+        model: GROQ_MODEL,
+        input_tokens_estimated: estimatedInputTokens,
+        status: 'blocked',
+        error_message: 'Prompt demasiado largo',
+        request_payload: { taskId, promptPreview: prompt.slice(0, 1000) },
+      })
+
+      return {
+        error: `El prompt supera el límite interno de ${AI_MAX_INPUT_TOKENS} tokens`,
+      }
+    }
+
+    const { text, usage } = await generateJson(prompt)
+    const parsed = safeParseGoalPlan(text) // Reutilizamos la función de parseo
+
+    if (!parsed.sessions.length) {
+      throw new Error('La IA no devolvió sesiones válidas')
+    }
+
+    await supabase.from('ai_logs').insert({
+      user_id: user.id,
+      action: 'split_task',
+      model: GROQ_MODEL,
+      input_tokens_estimated: estimatedInputTokens,
+      prompt_tokens: usage?.prompt_tokens ?? null,
+      output_tokens: usage?.completion_tokens ?? null,
+      total_tokens: usage?.total_tokens ?? null,
+      thought_tokens: null,
+      status: 'success',
+      request_payload: { taskId, calendarEvents: calendarInfo.length },
+      response_payload: parsed,
+    })
+
+    return { data: parsed }
+  } catch (error: any) {
+    console.error('splitTaskWithAI error:', error)
+
+    await supabase.from('ai_logs').insert({
+      user_id: user.id,
+      action: 'split_task',
+      model: GROQ_MODEL,
+      input_tokens_estimated: await countInputTokens(prompt),
+      status: 'error',
+      error_message: error?.message ?? 'Error desconocido',
+      request_payload: { taskId },
+    })
+
+    return { error: error?.message ?? 'No se pudo dividir la tarea' }
+  }
+}
+
+export async function createTasksFromSplitTask(params: {
+  originalTaskId: string
+  originalTaskTitle: string
+  sessions: any[]
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  try {
+    // Crear las nuevas tareas a partir de las sesiones
+    const newTasks = params.sessions.map(session => ({
+      title: session.title,
+      category: 'split_task',
+      priority: 2, // 2 = media (1=baja, 2=media, 3=alta)
+      estimated_duration_min: session.durationMin,
+      difficulty: 3,
+      notes: `División de: ${params.originalTaskTitle}\nEnfoque: ${session.focus}\nRazón: ${session.reason}`,
+      user_id: user.id,
+      completed: false,
+    }))
+
+    const { data: createdTasks, error: insertError } = await supabase
+      .from('flexible_tasks')
+      .insert(newTasks)
+      .select()
+
+    if (insertError) {
+      console.error('Error creando tareas divididas:', insertError)
+      return { error: insertError.message }
+    }
+
+    // Marcar la tarea original como completada o archivada
+    const { error: updateError } = await supabase
+      .from('flexible_tasks')
+      .update({
+        completed: true,
+        completed_at: new Date().toISOString(),
+        notes: `[DIVIDIDA] ${params.originalTaskTitle}\nReemplazada por ${createdTasks?.length || 0} tareas más pequeñas.`
+      })
+      .eq('id', params.originalTaskId)
+      .eq('user_id', user.id)
+
+    if (updateError) {
+      console.error('Error actualizando tarea original:', updateError)
+      // No retornamos error aquí, ya que las nuevas tareas se crearon
+    }
+
+    revalidatePath('/dashboard/tasks')
+    revalidatePath('/dashboard/calendar')
+    
+    return { 
+      success: true, 
+      created: createdTasks?.length || 0,
+      tasks: createdTasks 
+    }
+  } catch (error: any) {
+    console.error('createTasksFromSplitTask error:', error)
+    return { error: error?.message ?? 'Error al crear tareas divididas' }
+  }
+}
+
 export async function getGoals() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
