@@ -48,7 +48,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
   const highPriorityTasks = useMemo(
     () =>
       pendingTasks.filter((task) =>
-        ["alta", "high", "urgent"].includes((task.priority ?? "").toLowerCase())
+        ["alta", "high", "urgent"].includes(String(task.priority ?? "").toLowerCase())
       ),
     [pendingTasks]
   );

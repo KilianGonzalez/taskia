@@ -186,16 +186,33 @@ export async function deleteTask(taskId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-
   const { error } = await supabase
     .from('flexible_tasks')
     .delete()
     .eq('id', taskId)
     .eq('user_id', user.id)
 
-
   if (error) return { error: error.message }
   revalidatePath('/dashboard/tasks')
+  return { success: true }
+}
+
+export async function updateFlexibleTask(taskId: string, updates: {
+  due_date?: string
+  estimated_duration_min?: number
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { error } = await supabase
+    .from('flexible_tasks')
+    .update(updates)
+    .eq('id', taskId)
+    .eq('user_id', user.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/calendar')
   return { success: true }
 }
 
@@ -535,7 +552,7 @@ export async function createTasksFromSuggestedSessions(params: {
     user_id: user.id,
     title: session.title.trim(),
     category: 'study',
-    priority: 2,
+    priority: 'media',
     estimated_duration_min: Math.max(25, Math.min(90, Math.round(session.durationMin))),
     difficulty: 2,
     due_date: goal.due_date || null,

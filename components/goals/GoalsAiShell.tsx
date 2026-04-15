@@ -137,22 +137,29 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
 
         setAiLoading(true);
 
-        const res = (await suggestGoalSessions(selectedAcademicGoal.id)) as {
-            error?: string;
-            data?: GoalPlanResult;
-        };
+        try {
+            const res = (await suggestGoalSessions(selectedAcademicGoal.id)) as {
+                error?: string;
+                data?: GoalPlanResult;
+            };
 
-        setAiLoading(false);
+            setAiLoading(false);
 
-        if (res?.error) {
-            setAiError(res.error);
-            return;
-        }
+            if (res?.error) {
+                setAiError(res.error);
+                return;
+            }
 
-        if (res?.data) {
-            setPlanGoalTitle(selectedAcademicGoal.title);
-            setSuggestedPlan(res.data);
-            setPlanOpen(true);
+            if (res?.data) {
+                console.log('Sesiones sugeridas:', res.data);
+                setPlanGoalTitle(selectedAcademicGoal.title);
+                setSuggestedPlan(res.data);
+                setPlanOpen(true);
+            }
+        } catch (error) {
+            console.error('Error obteniendo sugerencias:', error);
+            setAiError("Error al obtener sugerencias de sesiones.");
+            setAiLoading(false);
         }
     }
 
