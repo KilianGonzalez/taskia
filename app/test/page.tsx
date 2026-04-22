@@ -4,10 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 export default async function TestPage() {
   // Test Server Actions
   const flexibleTasks = await getFlexibleTasks()
-  const scheduledBlocks = await getScheduledBlocks(
-    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 días atrás
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()  // 7 días adelante
-  )
+  const scheduledBlocks = await getScheduledBlocks()
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -49,8 +46,8 @@ export default async function TestPage() {
                   <div key={block.id} className="p-3 border rounded-lg">
                     <h4 className="font-medium">{block.title}</h4>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(block.start_datetime).toLocaleString()} - 
-                      {new Date(block.end_datetime).toLocaleString()}
+                      {new Date(block.start).toLocaleString()} - 
+                      {new Date(block.end).toLocaleString()}
                     </p>
                   </div>
                 ))

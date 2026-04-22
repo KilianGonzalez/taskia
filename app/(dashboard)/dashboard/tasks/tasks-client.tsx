@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   Plus, Search, Filter, Clock, Tag,
@@ -8,6 +8,7 @@ import {
   AlertCircle, Loader2
 } from "lucide-react"
 import { toggleTask, createTask, deleteTask } from "@/app/actions"
+import { TaskDetailModal } from "@/components/tasks/TaskDetailModal"
 
 interface Task {
   id: string
@@ -15,7 +16,7 @@ interface Task {
   category?: string
   priority?: string
   due_date?: string
-  estimated_duration?: number
+  estimated_duration_min?: number
   difficulty?: number
   notes?: string
   completed: boolean
@@ -61,7 +62,7 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
       category: form.category || undefined,
       priority: form.priority,
       due_date: form.due_date || undefined,
-      estimated_duration: form.estimated_duration ? Number(form.estimated_duration) : undefined,
+      estimated_duration_min: form.estimated_duration ? Number(form.estimated_duration) : undefined,
       difficulty: form.difficulty ? Number(form.difficulty) : undefined,
       notes: form.notes || undefined,
     })
@@ -178,6 +179,11 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showPriorityMenu, setShowPriorityMenu] = useState(false)
+  const [completingTask, setCompletingTask] = useState<Task | null>(null)
+
+  useEffect(() => {
+    setTasks(initialTasks)
+  }, [initialTasks])
 
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
@@ -197,15 +203,40 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
   const grouped   = groupTasksByDate(filtered.filter(t => activeTab === 'completadas' ? t.completed : !t.completed))
 
   const handleToggle = async (taskId: string, current: boolean) => {
-    setTogglingId(taskId)
-    setTasks(prev => prev.map(t =>
-      t.id === taskId ? { ...t, completed: !current, completed_at: !current ? new Date().toISOString() : undefined } : t
-    ))
-    const res = await toggleTask(taskId, !current)
-    if (res.error) {
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: current } : t))
+    // Si la tarea ya está completada, descompletar directamente
+    if (current) {
+      setTogglingId(taskId)
+      setTasks(prev => prev.map(t =>
+        t.id === taskId ? { ...t, completed: false, completed_at: undefined } : t
+      ))
+      const res = await toggleTask(taskId, false)
+      if (res.error) {
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: true } : t))
+      }
+      setTogglingId(null)
+    } else {
+      // Si no está completada, abrir modal de confirmación
+      const task = tasks.find(t => t.id === taskId)
+      if (task) {
+        setCompletingTask(task)
+      }
     }
+  }
+
+  const handleCompleteTask = async () => {
+    if (!completingTask) return
+    
+    setTogglingId(completingTask.id)
+    const res = await toggleTask(completingTask.id, true)
+    
+    if (!res.error) {
+      setTasks(prev => prev.map(t =>
+        t.id === completingTask.id ? { ...t, completed: true, completed_at: new Date().toISOString() } : t
+      ))
+    }
+    
     setTogglingId(null)
+    setCompletingTask(null)
   }
 
   const handleDelete = async (taskId: string) => {
@@ -214,6 +245,19 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
     const res = await deleteTask(taskId)
     if (res.error) router.refresh()
     setDeletingId(null)
+  }
+
+  const handleDeleteFromModal = async () => {
+    if (!completingTask) return
+    await handleDelete(completingTask.id)
+    setCompletingTask(null)
+  }
+
+  const handleEditTask = () => {
+    if (!completingTask) return
+    // Por ahora, simplemente cerramos el modal
+    // En el futuro, podríamos abrir un modal de edición
+    setCompletingTask(null)
   }
 
   const priorityLabels: Record<string, string> = {
@@ -225,6 +269,16 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
 
       {showModal && (
         <NewTaskModal onClose={() => setShowModal(false)} onCreated={() => router.refresh()} />
+      )}
+
+      {completingTask && (
+        <TaskDetailModal 
+          task={completingTask} 
+          onClose={() => setCompletingTask(null)} 
+          onComplete={handleCompleteTask} 
+          onDelete={handleDeleteFromModal}
+          onEdit={handleEditTask}
+        />
       )}
 
       {/* Header */}
@@ -328,13 +382,25 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
                 {/* Tareas */}
                 <div className="divide-y divide-gray-50 dark:divide-gray-800">
                   {dateTasks.map((task) => {
-                    const priority = priorityConfig[task.priority ?? ''] || priorityConfig.baja
+                    const priority = priorityConfig[String(task.priority ?? '')] || priorityConfig.baja
                     const isToggling = togglingId === task.id
                     return (
-                      <div key={task.id}
-                        className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group">
+                      <div 
+                        key={task.id}
+                        className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group cursor-pointer"
+                        onClick={() => {
+                          if (!task.completed) {
+                            setCompletingTask(task)
+                          }
+                        }}
+                      >
 
-                        <button onClick={() => handleToggle(task.id, task.completed)} disabled={isToggling}
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleToggle(task.id, task.completed)
+                          }} 
+                          disabled={isToggling}
                           className="shrink-0 text-gray-300 hover:text-indigo-500 transition-colors disabled:opacity-50">
                           {isToggling
                             ? <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
@@ -366,9 +432,9 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
                                 {new Date(task.due_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                               </span>
                             )}
-                            {task.estimated_duration && (
+                            {task.estimated_duration_min && (
                               <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                                ~{task.estimated_duration} min
+                                ~{task.estimated_duration_min} min
                               </span>
                             )}
                           </div>
@@ -378,7 +444,12 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
                           {priority.label}
                         </span>
 
-                        <button onClick={() => handleDelete(task.id)} disabled={deletingId === task.id}
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDelete(task.id)
+                          }} 
+                          disabled={deletingId === task.id}
                           className="shrink-0 text-gray-200 dark:text-gray-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50">
                           {deletingId === task.id
                             ? <Loader2 className="w-4 h-4 animate-spin" />

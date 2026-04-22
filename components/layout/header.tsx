@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 
 interface HeaderProps {
   avatarUrl?: string | null
-  userName: string
+  userName?: string
 }
 
 function getCurrentWeekRange() {
