@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   Plus, Search, Filter, Clock, Tag,
@@ -180,6 +180,10 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showPriorityMenu, setShowPriorityMenu] = useState(false)
   const [completingTask, setCompletingTask] = useState<Task | null>(null)
+
+  useEffect(() => {
+    setTasks(initialTasks)
+  }, [initialTasks])
 
   const filtered = useMemo(() => {
     return tasks.filter((t) => {

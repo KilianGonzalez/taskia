@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   Plus, TrendingUp, Flame, Trophy,
@@ -285,6 +285,10 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
   const [showNewModal, setShowNewModal] = useState(false)
   const [progressGoal, setProgressGoal] = useState<Goal | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setGoals(initialGoals)
+  }, [initialGoals])
 
   const tabFilter: Record<string, string> = {
     'Académico': 'academic', 'Personal': 'personal', 'Hábitos': 'habit'

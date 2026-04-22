@@ -46,8 +46,8 @@ export default async function TestPage() {
                   <div key={block.id} className="p-3 border rounded-lg">
                     <h4 className="font-medium">{block.title}</h4>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(block.start_datetime).toLocaleString()} - 
-                      {new Date(block.end_datetime).toLocaleString()}
+                      {new Date(block.start).toLocaleString()} - 
+                      {new Date(block.end).toLocaleString()}
                     </p>
                   </div>
                 ))

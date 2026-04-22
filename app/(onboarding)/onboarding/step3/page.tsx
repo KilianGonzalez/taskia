@@ -50,6 +50,18 @@ type Step1Data = {
   studyDays: number[]
 }
 
+type FixedCommitmentRow = {
+  id: string
+  user_id: string
+  title: string
+  category?: string | null
+  day_of_week?: string | number | null
+  start_time?: string | null
+  end_time?: string | null
+  color?: string | null
+  metadata?: Record<string, unknown> | null
+}
+
 function Stepper({ current }: { current: number }) {
   return (
     <div className="flex items-center justify-center gap-0 mb-8">
@@ -272,10 +284,6 @@ function getBlockColor(tipo: Compromiso['tipo']) {
   return '#64748b'
 }
 
-function mapCommitmentTypeToBlockType(tipo: Compromiso['tipo']) {
-  return 'fixed'
-}
-
 function getStartOfWeek(date: Date) {
   const d = new Date(date)
   const day = (d.getDay() + 6) % 7
@@ -299,7 +307,7 @@ function buildDate(base: Date, time: string) {
 function generateScheduledBlocks(commitments: Compromiso[], weeks = 6) {
   const now = new Date()
   const weekStart = getStartOfWeek(now)
-  const rows: any[] = []
+  const rows: Array<Record<string, unknown>> = []
 
   for (const commitment of commitments) {
     for (let week = 0; week < weeks; week++) {
@@ -314,7 +322,7 @@ function generateScheduledBlocks(commitments: Compromiso[], weeks = 6) {
 
         rows.push({
           title: commitment.titulo,
-          block_type: mapCommitmentTypeToBlockType(commitment.tipo),
+          block_type: 'fixed',
           start_datetime: start.toISOString(),
           end_datetime: end.toISOString(),
           color: getBlockColor(commitment.tipo),
@@ -328,6 +336,88 @@ function generateScheduledBlocks(commitments: Compromiso[], weeks = 6) {
           },
         })
       }
+    }
+  }
+
+  return rows
+}
+
+function buildFixedCommitmentsPayload(userId: string, commitments: Compromiso[]) {
+  const rows = []
+
+  for (const commitment of commitments) {
+    const groupId = crypto.randomUUID()
+
+    for (const dayIndex of commitment.dias) {
+      rows.push({
+        user_id: userId,
+        title: commitment.titulo,
+        category: commitment.tipo,
+        day_of_week: String(dayIndex),
+        start_time: commitment.inicio,
+        end_time: commitment.fin,
+        recurrence_rule: 'weekly',
+        color: getBlockColor(commitment.tipo),
+        metadata: {
+          source: 'fixed_commitment',
+          recurring: true,
+          ui_type: commitment.tipo,
+          days: commitment.dias,
+          commitment_group_id: groupId,
+        },
+      })
+    }
+  }
+
+  return rows
+}
+
+function generateScheduledBlocksFromFixedCommitments(
+  commitments: FixedCommitmentRow[],
+  weeks = 6
+) {
+  const now = new Date()
+  const weekStart = getStartOfWeek(now)
+  const rows = []
+
+  for (const commitment of commitments) {
+    const dayIndex = Number.parseInt(String(commitment.day_of_week ?? ''), 10)
+
+    if (
+      !Number.isInteger(dayIndex) ||
+      dayIndex < 0 ||
+      dayIndex > 6 ||
+      !commitment.start_time ||
+      !commitment.end_time
+    ) {
+      continue
+    }
+
+    for (let week = 0; week < weeks; week++) {
+      const dayBase = new Date(weekStart)
+      dayBase.setDate(weekStart.getDate() + week * 7 + dayIndex)
+
+      const start = buildDate(dayBase, commitment.start_time)
+      const end = buildDate(dayBase, commitment.end_time)
+
+      if (end <= now) continue
+
+      rows.push({
+        user_id: commitment.user_id,
+        title: commitment.title,
+        block_type: 'fixed',
+        start_datetime: start.toISOString(),
+        end_datetime: end.toISOString(),
+        color: commitment.color,
+        is_ai_generated: false,
+        is_locked: true,
+        fixed_commitment_id: commitment.id,
+        metadata: {
+          ...(commitment.metadata ?? {}),
+          source: 'fixed_commitment',
+          recurring: true,
+        },
+      })
     }
   }
 
@@ -432,12 +522,28 @@ export default function OnboardingStep3() {
       }
 
       if (compromisos.length > 0) {
-        const scheduledBlocks = generateScheduledBlocks(compromisos).map(
-          (row) => ({
+        const fixedCommitmentsPayload = buildFixedCommitmentsPayload(
+          user.id,
+          compromisos
+        )
+        let scheduledBlocks = []
+
+        const { data: createdFixedCommitments, error: fixedCommitmentsError } =
+          await supabase
+            .from('fixed_commitments')
+            .insert(fixedCommitmentsPayload)
+            .select('*')
+
+        if (fixedCommitmentsError) {
+          scheduledBlocks = generateScheduledBlocks(compromisos).map((row) => ({
             ...row,
             user_id: user.id,
-          })
-        )
+          }))
+        } else {
+          scheduledBlocks = generateScheduledBlocksFromFixedCommitments(
+            (createdFixedCommitments ?? []) as FixedCommitmentRow[]
+          )
+        }
 
         if (scheduledBlocks.length > 0) {
           const { error: blocksError } = await supabase
@@ -445,6 +551,19 @@ export default function OnboardingStep3() {
             .insert(scheduledBlocks)
 
           if (blocksError) {
+            if (!fixedCommitmentsError && createdFixedCommitments?.length) {
+              await supabase
+                .from('fixed_commitments')
+                .delete()
+                .eq('user_id', user.id)
+                .in(
+                  'id',
+                  (createdFixedCommitments as FixedCommitmentRow[]).map(
+                    (commitment) => commitment.id
+                  )
+                )
+            }
+
             alert(
               'No se pudieron guardar los compromisos: ' + blocksError.message
             )
