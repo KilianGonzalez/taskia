@@ -157,8 +157,8 @@ export default async function DashboardPage() {
               {todayTasks.slice(0, 5).map((task: any) => (
                 <div key={task.id} className="flex items-center gap-3 py-2 border-b border-gray-50 dark:border-gray-800 last:border-0">
                   <div className={`w-2 h-2 rounded-full shrink-0 ${
-                    task.priority === 'alta'  ? 'bg-red-400' :
-                    task.priority === 'media' ? 'bg-yellow-400' :
+                    String(task.priority) === 'alta'  ? 'bg-red-400' :
+                    String(task.priority) === 'media' ? 'bg-yellow-400' :
                     'bg-green-400'
                   }`} />
                   <div className="flex-1 min-w-0">
@@ -183,11 +183,11 @@ export default async function DashboardPage() {
                   </div>
                   {task.priority && (
                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${
-                      task.priority === 'alta'  ? 'bg-red-50 dark:bg-red-950 text-red-500' :
-                      task.priority === 'media' ? 'bg-yellow-50 dark:bg-yellow-950 text-yellow-600' :
+                      String(task.priority) === 'alta'  ? 'bg-red-50 dark:bg-red-950 text-red-500' :
+                      String(task.priority) === 'media' ? 'bg-yellow-50 dark:bg-yellow-950 text-yellow-600' :
                       'bg-green-50 dark:bg-green-950 text-green-600'
                     }`}>
-                      {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                      {String(task.priority).charAt(0).toUpperCase() + String(task.priority).slice(1)}
                     </span>
                   )}
                 </div>

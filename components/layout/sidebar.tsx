@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSidebar } from "@/components/layout/sidebar-context"
 import { 
+  CalendarClock,
   LayoutDashboard, 
   ListTodo, 
   Zap, 
@@ -11,13 +12,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from "lucide-react"
 
 const navItems = [
   { href: "/dashboard",          label: "Inicio",     icon: LayoutDashboard },
   { href: "/dashboard/calendar", label: "Calendario", icon: Calendar },
+  { href: "/dashboard/commitments", label: "Compromisos", icon: CalendarClock },
   { href: "/dashboard/tasks",    label: "Tareas",     icon: ListTodo },
   { href: "/dashboard/goals",    label: "Objetivos",  icon: Zap },
   { href: "/dashboard/settings", label: "Ajustes",    icon: Settings },
