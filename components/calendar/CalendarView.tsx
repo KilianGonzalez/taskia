@@ -77,14 +77,20 @@ export default function CalendarView({ initialEvents, flexibleTasks }: CalendarP
         
         if (result.error) {
           alert(`Error al mover tarea: ${result.error}`)
+          dropInfo.revert() // Revertir si hay error
         } else {
           // Éxito - podríamos mostrar una notificación más elegante
           console.log('Tarea movida exitosamente')
+          // No hacer revert - mantener la nueva posición
         }
       } catch (error) {
         console.error('Error moviendo tarea:', error)
         alert('Error al mover tarea')
+        dropInfo.revert() // Revertir si hay error
       }
+    } else {
+      // Si no es una tarea, revertir el cambio
+      dropInfo.revert()
     }
   }
 
@@ -115,13 +121,19 @@ export default function CalendarView({ initialEvents, flexibleTasks }: CalendarP
         
         if (result.error) {
           alert(`Error al cambiar duración: ${result.error}`)
+          resizeInfo.revert() // Revertir si hay error
         } else {
           console.log('Duración cambiada exitosamente')
+          // No hacer revert - mantener la nueva duración
         }
       } catch (error) {
         console.error('Error cambiando duración:', error)
         alert('Error al cambiar duración')
+        resizeInfo.revert() // Revertir si hay error
       }
+    } else {
+      // Si no es una tarea, revertir el cambio
+      resizeInfo.revert()
     }
   }
 
@@ -176,9 +188,9 @@ export default function CalendarView({ initialEvents, flexibleTasks }: CalendarP
           title: task.title,
           start: taskStart.toISOString(),
           end: taskEnd.toISOString(),
-          backgroundColor: isFromAI ? '#5f5ef1' : (categoryColors[task.category || 'default']?.bg || categoryColors.default.bg),
-          borderColor: isFromAI ? '#4a4ad8' : (categoryColors[task.category || 'default']?.border || categoryColors.default.border),
-          textColor: isFromAI ? '#ffffff' : (categoryColors[task.category || 'default']?.text || categoryColors.default.text),
+          backgroundColor: '#5f5ef1', // Todas las tareas usan el mismo color azul/lila
+          borderColor: '#4a4ad8',
+          textColor: '#ffffff',
           allDay: false, // Asegurarse de que no sea allDay para vistas de tiempo
           display: 'block', // Asegurar que se muestre en todas las vistas
           editable: true, // Solo las tareas del usuario son editables
@@ -240,17 +252,11 @@ export default function CalendarView({ initialEvents, flexibleTasks }: CalendarP
         }
       }
       if (isTask) {
-        if (isFromAI) {
-          return {
-            bg: '#5f5ef1',
-            border: '#4a4ad8',
-            text: '#ffffff'
-          }
-        }
+        // Todas las tareas (usuario e IA) usan el mismo color azul/lila
         return {
-          bg: '#FEF3C7',
-          border: '#F59E0B',
-          text: '#92400E'
+          bg: '#5f5ef1',
+          border: '#4a4ad8',
+          text: '#ffffff'
         }
       }
       // Eventos programados (TaskIA)

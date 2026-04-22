@@ -211,25 +211,10 @@ export async function updateFlexibleTask(taskId: string, updates: {
     .eq('id', taskId)
     .eq('user_id', user.id)
 
-  if (taskError) return { error: taskError.message }
+  if (error) return { error: error.message }
 
-  const { data: goal } = await supabase
-    .from('goals')
-    .select('target_value')
-    .eq('id', goalId)
-    .single()
-
-  const isCompleted = goal ? newValue >= goal.target_value : false
-
-  const { error: updateError } = await supabase
-    .from('goals')
-    .update({
-      current_value: newValue,
-      status: isCompleted ? 'completed' : 'active',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', goalId)
-    .eq('user_id', user.id)
+  revalidatePath('/dashboard/calendar')
+  revalidatePath('/dashboard/tasks')
 
   return { success: true }
 }
