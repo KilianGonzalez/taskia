@@ -7,6 +7,8 @@ import {
   CheckCircle2, Clock, ChevronRight, Sparkles, Calendar,
 } from "lucide-react";
 
+type TodayTask = Awaited<ReturnType<typeof getTodayTasks>>[number]
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -154,7 +156,7 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {todayTasks.slice(0, 5).map((task: any) => (
+              {todayTasks.slice(0, 5).map((task: TodayTask) => (
                 <div key={task.id} className="flex items-center gap-3 py-2 border-b border-gray-50 dark:border-gray-800 last:border-0">
                   <div className={`w-2 h-2 rounded-full shrink-0 ${
                     String(task.priority) === 'alta'  ? 'bg-red-400' :
@@ -170,8 +172,8 @@ export default async function DashboardPage() {
                       {task.title}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      {task.subject && (
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500">{task.subject}</span>
+                      {task.category && (
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500">{task.category}</span>
                       )}
                       {task.due_date && (
                         <span className="flex items-center gap-0.5 text-[10px] text-gray-400 dark:text-gray-500">

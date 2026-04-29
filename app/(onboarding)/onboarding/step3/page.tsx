@@ -50,6 +50,24 @@ type Step1Data = {
   studyDays: number[]
 }
 
+function getStoredObjetivos(): Objetivo[] {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  const raw = localStorage.getItem(STEP3_KEY)
+  if (!raw) {
+    return []
+  }
+
+  try {
+    const saved = JSON.parse(raw) as { objetivos?: Objetivo[] }
+    return Array.isArray(saved.objetivos) ? saved.objetivos : []
+  } catch {
+    return []
+  }
+}
+
 type FixedCommitmentRow = {
   id: string
   user_id: string
@@ -428,19 +446,9 @@ export default function OnboardingStep3() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [objetivos, setObjetivos] = useState<Objetivo[]>([])
+  const [objetivos, setObjetivos] = useState<Objetivo[]>(getStoredObjetivos)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    const raw = localStorage.getItem(STEP3_KEY)
-    if (!raw) return
-
-    try {
-      const saved = JSON.parse(raw)
-      setObjetivos(saved.objetivos ?? [])
-    } catch {}
-  }, [])
 
   useEffect(() => {
     localStorage.setItem(
@@ -606,7 +614,7 @@ export default function OnboardingStep3() {
 
       router.refresh()
       router.push('/dashboard')
-    } catch (error) {
+    } catch {
       alert('Ha ocurrido un error al finalizar el onboarding.')
       setSaving(false)
     }

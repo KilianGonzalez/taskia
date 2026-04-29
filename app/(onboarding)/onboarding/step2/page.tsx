@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Clock,
@@ -33,6 +33,24 @@ type Compromiso = {
   dias: number[]
   inicio: string
   fin: string
+}
+
+function getStoredCompromisos(): Compromiso[] {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  const raw = localStorage.getItem(STORAGE_KEY)
+  if (!raw) {
+    return []
+  }
+
+  try {
+    const saved = JSON.parse(raw) as { compromisos?: Compromiso[] }
+    return Array.isArray(saved.compromisos) ? saved.compromisos : []
+  } catch {
+    return []
+  }
 }
 
 function Stepper({ current }: { current: number }) {
@@ -269,18 +287,8 @@ function AddCompromisoForm({
 
 export default function OnboardingStep2() {
   const router = useRouter()
-  const [compromisos, setCompromisos] = useState<Compromiso[]>([])
+  const [compromisos, setCompromisos] = useState<Compromiso[]>(getStoredCompromisos)
   const [showForm, setShowForm] = useState(false)
-
-  useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return
-
-    try {
-      const saved = JSON.parse(raw)
-      setCompromisos(saved.compromisos ?? [])
-    } catch {}
-  }, [])
 
   const persistStep = (nextCompromisos: Compromiso[]) => {
     localStorage.setItem(

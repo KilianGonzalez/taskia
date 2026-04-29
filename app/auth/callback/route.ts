@@ -1,6 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import {
+  getGoogleAvatarUrl,
+  getGoogleDisplayName,
+  mergeGoogleIntegrationPreferences,
+} from '@/lib/google/integration'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -41,11 +46,10 @@ export async function GET(request: Request) {
 
   const user = data.session.user
   const providerToken = data.session.provider_token
+  const providerRefreshToken = data.session.provider_refresh_token
 
-  const fullName =
-    user.user_metadata?.full_name || user.user_metadata?.name || null
-  const avatarUrl =
-    user.user_metadata?.avatar_url || user.user_metadata?.picture || null
+  const fullName = getGoogleDisplayName(user)
+  const avatarUrl = getGoogleAvatarUrl(user)
   const email = user.email ?? null
 
   const { data: existingProfile } = await supabase
@@ -54,11 +58,15 @@ export async function GET(request: Request) {
     .eq('id', user.id)
     .maybeSingle()
 
-  const mergedPreferences = {
-    ...(existingProfile?.preferences ?? {}),
-    ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
-    ...(providerToken ? { google_calendar_token: providerToken } : {}),
-  }
+  const mergedPreferences = mergeGoogleIntegrationPreferences(
+    existingProfile?.preferences,
+    {
+      avatarUrl,
+      accessToken: providerToken,
+      refreshToken: providerRefreshToken,
+      lastSyncError: null,
+    }
+  )
 
   const onboardingCompleted = existingProfile?.onboarding_completed ?? false
 

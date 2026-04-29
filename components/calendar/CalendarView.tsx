@@ -1,273 +1,519 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type {
+  DatesSetArg,
+  EventClickArg,
+  EventContentArg,
+  EventDropArg,
+} from '@fullcalendar/core'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
+import type { EventResizeDoneArg } from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import esLocale from '@fullcalendar/core/locales/es'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
-import { updateFlexibleTask } from '@/app/actions'
+import { getGoogleCalendarEventsInRange, updateFlexibleTask } from '@/app/actions'
+import type {
+  CalendarEvent,
+  CalendarEventExtendedProps,
+  CalendarTask,
+} from '@/components/calendar/types'
 
 interface CalendarProps {
-  initialEvents: any[]
-  flexibleTasks: any[]
+  initialEvents: CalendarEvent[]
+  flexibleTasks: CalendarTask[]
+  onTaskUpdated?: (params: {
+    taskId: string
+    dueDate: string
+    estimatedDurationMin?: number
+  }) => void
 }
 
-interface Task {
-  id: string
-  title: string
-  category?: string
-  priority?: string
-  due_date?: string
-  estimated_duration_min?: number
-  difficulty?: number
-  notes?: string
-  completed: boolean
-  completed_at?: string
-  created_at: string
+function getExtendedProps(
+  extendedProps: Record<string, unknown>
+): CalendarEventExtendedProps {
+  return extendedProps as CalendarEventExtendedProps
 }
 
-// Paleta de colores por categoría (puedes ampliarla)
-const categoryColors: Record<string, { bg: string; border: string; text: string }> = {
-  default:    { bg: '#EEF2FF', border: '#6366F1', text: '#3730A3' },
-  deporte:    { bg: '#F0FDF4', border: '#22C55E', text: '#15803D' },
-  estudio:    { bg: '#FFF7ED', border: '#F97316', text: '#C2410C' },
-  musica:     { bg: '#FDF4FF', border: '#D946EF', text: '#A21CAF' },
-  ocio:       { bg: '#F0F9FF', border: '#0EA5E9', text: '#0369A1' },
-  study:      { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' },
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
+const MIDNIGHT_ISO_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})T00:00(?::00(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?$/
+
+function parseDueDateForCalendar(dueDateValue: string) {
+  const trimmedDueDate = dueDateValue.trim()
+  const dateOnlyMatch = trimmedDueDate.match(DATE_ONLY_PATTERN)
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch
+    return new Date(Number(year), Number(month) - 1, Number(day), 9, 0, 0, 0)
+  }
+
+  const midnightMatch = trimmedDueDate.match(MIDNIGHT_ISO_PATTERN)
+  if (midnightMatch) {
+    const [, year, month, day] = midnightMatch
+    return new Date(Number(year), Number(month) - 1, Number(day), 9, 0, 0, 0)
+  }
+
+  const parsedDate = new Date(trimmedDueDate)
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
 }
 
-export default function CalendarView({ initialEvents, flexibleTasks }: CalendarProps) {
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+function formatLocalDateTime(dateValue: Date) {
+  const year = dateValue.getFullYear()
+  const month = String(dateValue.getMonth() + 1).padStart(2, '0')
+  const day = String(dateValue.getDate()).padStart(2, '0')
+  const hours = String(dateValue.getHours()).padStart(2, '0')
+  const minutes = String(dateValue.getMinutes()).padStart(2, '0')
+  const seconds = String(dateValue.getSeconds()).padStart(2, '0')
 
-  // Manejador de clic en eventos
-  const handleEventClick = (clickInfo: any) => {
-    const event = clickInfo.event
-    const isTask = event.extendedProps?.source === 'flexible_task'
-    
-    if (isTask && event.extendedProps?.taskId) {
-      // Encontrar la tarea completa
-      const task = flexibleTasks.find((t: any) => t.id === event.extendedProps.taskId)
-      if (task) {
-        setSelectedTask(task)
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+}
+
+export default function CalendarView({
+  initialEvents,
+  flexibleTasks,
+  onTaskUpdated,
+}: CalendarProps) {
+  const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null)
+  const [taskOverrides, setTaskOverrides] = useState<
+    Record<string, { dueDate?: string; estimatedDurationMin?: number }>
+  >({})
+  const initialGoogleEvents = useMemo(
+    () => initialEvents.filter((event) => event.extendedProps?.source === 'google'),
+    [initialEvents]
+  )
+  const [googleEvents, setGoogleEvents] = useState<CalendarEvent[]>(initialGoogleEvents)
+  const latestGoogleRequestId = useRef(0)
+  const lastLoadedGoogleRangeKey = useRef<string | null>(null)
+
+  const staticInitialEvents = useMemo(
+    () => initialEvents.filter((event) => event.extendedProps?.source !== 'google'),
+    [initialEvents]
+  )
+
+  useEffect(() => {
+    setGoogleEvents(initialGoogleEvents)
+  }, [initialGoogleEvents])
+
+  useEffect(() => {
+    const validTaskIds = new Set(flexibleTasks.map((task) => task.id))
+    setTaskOverrides((currentOverrides) => {
+      const nextOverrides = Object.entries(currentOverrides).reduce<
+        Record<string, { dueDate?: string; estimatedDurationMin?: number }>
+      >((accumulator, [taskId, override]) => {
+        if (validTaskIds.has(taskId)) {
+          accumulator[taskId] = override
+        }
+        return accumulator
+      }, {})
+
+      return Object.keys(nextOverrides).length === Object.keys(currentOverrides).length
+        ? currentOverrides
+        : nextOverrides
+    })
+  }, [flexibleTasks])
+
+  const mergedTasks = useMemo(
+    () =>
+      flexibleTasks.map((task) => {
+        const taskOverride = taskOverrides[task.id]
+        if (!taskOverride) {
+          return task
+        }
+
+        return {
+          ...task,
+          due_date: taskOverride.dueDate ?? task.due_date,
+          estimated_duration_min:
+            typeof taskOverride.estimatedDurationMin === 'number'
+              ? taskOverride.estimatedDurationMin
+              : task.estimated_duration_min,
+        }
+      }),
+    [flexibleTasks, taskOverrides]
+  )
+
+  const handleDatesSet = async (dateInfo: DatesSetArg) => {
+    const timeMin = new Date(dateInfo.start)
+    const timeMax = new Date(dateInfo.end)
+
+    timeMin.setDate(timeMin.getDate() - 7)
+    timeMax.setDate(timeMax.getDate() + 7)
+
+    const rangeKey = `${timeMin.toISOString()}|${timeMax.toISOString()}`
+    if (rangeKey === lastLoadedGoogleRangeKey.current) {
+      return
+    }
+
+    lastLoadedGoogleRangeKey.current = rangeKey
+    const requestId = ++latestGoogleRequestId.current
+
+    try {
+      const result = await getGoogleCalendarEventsInRange({
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMax.toISOString(),
+      })
+
+      if (requestId !== latestGoogleRequestId.current) {
+        return
       }
+
+      if (result.status === 'ok' || result.status === 'disconnected') {
+        setGoogleEvents(result.events)
+        return
+      }
+
+      lastLoadedGoogleRangeKey.current = null
+      console.error('Google Calendar sync returned an error status:', result.error)
+    } catch (error) {
+      if (requestId !== latestGoogleRequestId.current) {
+        return
+      }
+
+      lastLoadedGoogleRangeKey.current = null
+      console.error('Error loading Google Calendar events for visible range:', error)
     }
   }
 
-  // Manejador para cuando se mueve/arrastra un evento
-  const handleEventDrop = async (dropInfo: any) => {
+  const handleEventClick = (clickInfo: EventClickArg) => {
+    const extendedProps = getExtendedProps(clickInfo.event.extendedProps)
+    if (extendedProps.source !== 'flexible_task' || !extendedProps.taskId) {
+      return
+    }
+
+    const task = mergedTasks.find((candidate) => candidate.id === extendedProps.taskId)
+    if (task) {
+      setSelectedTask(task)
+    }
+  }
+
+  const handleEventDrop = async (dropInfo: EventDropArg) => {
     const event = dropInfo.event
-    const isTask = event.extendedProps?.source === 'flexible_task'
-    
-    if (isTask && event.extendedProps?.taskId) {
-      const taskId = event.extendedProps.taskId
-      const newStart = event.start
-      
-      console.log('Tarea movida:', {
-        taskId,
-        newStart: newStart.toISOString()
+    const extendedProps = getExtendedProps(event.extendedProps)
+
+    if (extendedProps.source !== 'flexible_task' || !extendedProps.taskId || !event.start) {
+      dropInfo.revert()
+      return
+    }
+
+    const taskId = extendedProps.taskId
+    const newStart = event.start
+    const nextDueDate = formatLocalDateTime(newStart)
+    const previousTask = mergedTasks.find((task) => task.id === taskId)
+    const previousDueDate = previousTask?.due_date
+
+    console.log('Tarea movida:', {
+      taskId,
+      newStart: nextDueDate,
+    })
+
+    setTaskOverrides((currentOverrides) => ({
+      ...currentOverrides,
+      [taskId]: {
+        ...currentOverrides[taskId],
+        dueDate: nextDueDate,
+      },
+    }))
+    onTaskUpdated?.({
+      taskId,
+      dueDate: nextDueDate,
+    })
+
+    try {
+      const result = await updateFlexibleTask(taskId, {
+        due_date: nextDueDate,
       })
-      
-      try {
-        // Llamar a la API para actualizar la fecha de la tarea
-        const result = await updateFlexibleTask(taskId, {
-          due_date: newStart.toISOString()
+
+      if (result.error) {
+        setTaskOverrides((currentOverrides) => {
+          const currentOverride = currentOverrides[taskId]
+          if (!currentOverride) {
+            return currentOverrides
+          }
+
+          if (!previousDueDate) {
+            const nextOverrides = { ...currentOverrides }
+            delete nextOverrides[taskId]
+            return nextOverrides
+          }
+
+          return {
+            ...currentOverrides,
+            [taskId]: {
+              ...currentOverride,
+              dueDate: previousDueDate,
+            },
+          }
         })
-        
-        if (result.error) {
-          alert(`Error al mover tarea: ${result.error}`)
-          dropInfo.revert() // Revertir si hay error
-        } else {
-          // Éxito - podríamos mostrar una notificación más elegante
-          console.log('Tarea movida exitosamente')
-          // No hacer revert - mantener la nueva posición
+        if (previousDueDate) {
+          onTaskUpdated?.({
+            taskId,
+            dueDate: previousDueDate,
+          })
         }
-      } catch (error) {
-        console.error('Error moviendo tarea:', error)
-        alert('Error al mover tarea')
-        dropInfo.revert() // Revertir si hay error
+        alert(`Error al mover tarea: ${result.error}`)
+        dropInfo.revert()
+        return
       }
-    } else {
-      // Si no es una tarea, revertir el cambio
+      console.log('Tarea movida exitosamente')
+    } catch (error) {
+      setTaskOverrides((currentOverrides) => {
+        const currentOverride = currentOverrides[taskId]
+        if (!currentOverride) {
+          return currentOverrides
+        }
+
+        if (!previousDueDate) {
+          const nextOverrides = { ...currentOverrides }
+          delete nextOverrides[taskId]
+          return nextOverrides
+        }
+
+        return {
+          ...currentOverrides,
+          [taskId]: {
+            ...currentOverride,
+            dueDate: previousDueDate,
+          },
+        }
+      })
+      if (previousDueDate) {
+        onTaskUpdated?.({
+          taskId,
+          dueDate: previousDueDate,
+        })
+      }
+      console.error('Error moviendo tarea:', error)
+      alert('Error al mover tarea')
       dropInfo.revert()
     }
   }
 
-  // Manejador para cuando se redimensiona un evento (cambia duración)
-  const handleEventResize = async (resizeInfo: any) => {
+  const handleEventResize = async (resizeInfo: EventResizeDoneArg) => {
     const event = resizeInfo.event
-    const isTask = event.extendedProps?.source === 'flexible_task'
-    
-    if (isTask && event.extendedProps?.taskId) {
-      const taskId = event.extendedProps.taskId
-      const newStart = event.start
-      const newEnd = event.end
-      const duration = (newEnd - newStart) / (1000 * 60) // duración en minutos
-      
-      console.log('Tarea redimensionada:', {
-        taskId,
-        newStart: newStart.toISOString(),
-        newEnd: newEnd.toISOString(),
-        duration: Math.round(duration)
+    const extendedProps = getExtendedProps(event.extendedProps)
+
+    if (
+      extendedProps.source !== 'flexible_task' ||
+      !extendedProps.taskId ||
+      !event.start ||
+      !event.end
+    ) {
+      resizeInfo.revert()
+      return
+    }
+
+    const taskId = extendedProps.taskId
+    const newStart = event.start
+    const newEnd = event.end
+    const duration = (newEnd.getTime() - newStart.getTime()) / (1000 * 60)
+    const nextDueDate = formatLocalDateTime(newStart)
+    const nextDuration = Math.round(duration)
+    const previousTask = mergedTasks.find((task) => task.id === taskId)
+    const previousDueDate = previousTask?.due_date
+    const previousDuration = previousTask?.estimated_duration_min
+
+    console.log('Tarea redimensionada:', {
+      taskId,
+      newStart: nextDueDate,
+      newEnd: formatLocalDateTime(newEnd),
+      duration: nextDuration,
+    })
+
+    setTaskOverrides((currentOverrides) => ({
+      ...currentOverrides,
+      [taskId]: {
+        ...currentOverrides[taskId],
+        dueDate: nextDueDate,
+        estimatedDurationMin: nextDuration,
+      },
+    }))
+    onTaskUpdated?.({
+      taskId,
+      dueDate: nextDueDate,
+      estimatedDurationMin: nextDuration,
+    })
+
+    try {
+      const result = await updateFlexibleTask(taskId, {
+        due_date: nextDueDate,
+        estimated_duration_min: nextDuration,
       })
-      
-      try {
-        // Llamar a la API para actualizar la duración de la tarea
-        const result = await updateFlexibleTask(taskId, {
-          due_date: newStart.toISOString(),
-          estimated_duration_min: Math.round(duration)
-        })
-        
-        if (result.error) {
-          alert(`Error al cambiar duración: ${result.error}`)
-          resizeInfo.revert() // Revertir si hay error
-        } else {
-          console.log('Duración cambiada exitosamente')
-          // No hacer revert - mantener la nueva duración
+
+      if (result.error) {
+        setTaskOverrides((currentOverrides) => ({
+          ...currentOverrides,
+          [taskId]: {
+            ...currentOverrides[taskId],
+            dueDate: previousDueDate,
+            estimatedDurationMin: previousDuration,
+          },
+        }))
+        if (previousDueDate) {
+          onTaskUpdated?.({
+            taskId,
+            dueDate: previousDueDate,
+            estimatedDurationMin: previousDuration,
+          })
         }
-      } catch (error) {
-        console.error('Error cambiando duración:', error)
-        alert('Error al cambiar duración')
-        resizeInfo.revert() // Revertir si hay error
+        alert(`Error al cambiar duracion: ${result.error}`)
+        resizeInfo.revert()
+        return
       }
-    } else {
-      // Si no es una tarea, revertir el cambio
+
+      console.log('Duracion cambiada exitosamente')
+    } catch (error) {
+      setTaskOverrides((currentOverrides) => ({
+        ...currentOverrides,
+        [taskId]: {
+          ...currentOverrides[taskId],
+          dueDate: previousDueDate,
+          estimatedDurationMin: previousDuration,
+        },
+      }))
+      if (previousDueDate) {
+        onTaskUpdated?.({
+          taskId,
+          dueDate: previousDueDate,
+          estimatedDurationMin: previousDuration,
+        })
+      }
+      console.error('Error cambiando duracion:', error)
+      alert('Error al cambiar duracion')
       resizeInfo.revert()
     }
   }
 
-  // Convertir flexibleTasks a eventos del calendario (como tareas pendientes)
-  const taskEvents = useMemo(() => {
-    console.log('Flexible tasks recibidas:', flexibleTasks)
-    
-    const filteredTasks = flexibleTasks.filter((task: any) => !task.completed && task.due_date)
-    console.log('Tareas filtradas (no completadas y con due_date):', filteredTasks.length)
-    
-    const events = filteredTasks.map((task: any) => {
-        const dueDate = new Date(task.due_date!)
-        const duration = task.estimated_duration_min || 60
-        
-        console.log(`Procesando tarea "${task.title}":`, {
-          due_date: task.due_date,
-          dueDate: dueDate.toISOString(),
-          hours: dueDate.getHours(),
-          minutes: dueDate.getMinutes()
-        })
-        
-        // Para vistas de semana y día, poner la tarea a una hora razonable (9:00 AM)
-        // si la fecha de vencimiento no tiene hora específica
-        let taskStart: Date
-        if (task.notes && task.notes.includes('Creada por IA')) {
-          // Si es una tarea de IA, considerar que no tiene hora específica
-          taskStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate(), 9, 0, 0, 0)
-          console.log(`Tarea de IA sin hora, asignando 9:00 AM: ${taskStart.toISOString()}`)
-        } else if (dueDate.getHours() === 0 && dueDate.getMinutes() === 0) {
-          // Si es medianoche (sin hora específica), crear nueva fecha a las 9:00 AM
-          taskStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate(), 9, 0, 0, 0)
-          console.log(`Tarea sin hora, asignando 9:00 AM: ${taskStart.toISOString()}`)
-        } else {
-          // Si tiene hora específica, usar la fecha original
-          taskStart = new Date(dueDate)
-          console.log(`Tarea con hora específica: ${taskStart.toISOString()}`)
-        }
-        
-        const taskEnd = new Date(taskStart.getTime() + duration * 60000)
-        
-        // Verificar si es una tarea creada por IA
-        const isFromAI = task.notes && task.notes.includes('Creada por IA')
-        
-        console.log(`Evento creado para "${task.title}":`, {
-          start: taskStart.toISOString(),
-          end: taskEnd.toISOString(),
-          isFromAI
-        })
-        
-        return {
-          id: `task_${task.id}`,
-          title: task.title,
-          start: taskStart.toISOString(),
-          end: taskEnd.toISOString(),
-          backgroundColor: '#5f5ef1', // Todas las tareas usan el mismo color azul/lila
-          borderColor: '#4a4ad8',
-          textColor: '#ffffff',
-          allDay: false, // Asegurarse de que no sea allDay para vistas de tiempo
-          display: 'block', // Asegurar que se muestre en todas las vistas
-          editable: true, // Solo las tareas del usuario son editables
-          durationEditable: true, // Permitir cambiar duración
-          startEditable: true, // Permitir cambiar hora de inicio
-          extendedProps: {
-            source: 'flexible_task',
-            category: task.category,
-            priority: task.priority,
-            duration: duration,
-            taskId: task.id,
-            isFromAI: isFromAI,
-          },
-        }
-      })
-    
-    console.log('Eventos de tareas creados:', events.length)
-    return events
-  }, [flexibleTasks])
+  const taskEvents = useMemo<CalendarEvent[]>(() => {
+    console.log('Flexible tasks recibidas:', mergedTasks)
 
-  // Combinar eventos programados con tareas flexibles
+    const filteredTasks = mergedTasks.filter((task) => !task.completed && task.due_date)
+    console.log('Tareas filtradas (no completadas y con due_date):', filteredTasks.length)
+
+    const events: Array<CalendarEvent | null> = filteredTasks.map(
+      (task): CalendarEvent | null => {
+      const dueDate = parseDueDateForCalendar(task.due_date!)
+      if (!dueDate) {
+        return null
+      }
+      const duration = task.estimated_duration_min || 60
+
+      console.log(`Procesando tarea "${task.title}":`, {
+        due_date: task.due_date,
+        dueDate: dueDate.toISOString(),
+        hours: dueDate.getHours(),
+        minutes: dueDate.getMinutes(),
+      })
+
+      let taskStart: Date
+      if (dueDate.getHours() === 0 && dueDate.getMinutes() === 0) {
+        taskStart = new Date(
+          dueDate.getFullYear(),
+          dueDate.getMonth(),
+          dueDate.getDate(),
+          9,
+          0,
+          0,
+          0
+        )
+        console.log(`Tarea sin hora, asignando 9:00 AM: ${taskStart.toISOString()}`)
+      } else {
+        taskStart = new Date(dueDate)
+        console.log(`Tarea con hora especÃ­fica: ${taskStart.toISOString()}`)
+      }
+
+      const taskEnd = new Date(taskStart.getTime() + duration * 60000)
+      const isFromAI = Boolean(task.notes && task.notes.includes('Creada por IA'))
+
+      console.log(`Evento creado para "${task.title}":`, {
+        start: taskStart.toISOString(),
+        end: taskEnd.toISOString(),
+        isFromAI,
+      })
+
+      return {
+        id: `task_${task.id}`,
+        title: task.title,
+        start: taskStart.toISOString(),
+        end: taskEnd.toISOString(),
+        backgroundColor: '#5f5ef1',
+        borderColor: '#4a4ad8',
+        textColor: '#ffffff',
+        allDay: false,
+        display: 'block',
+        editable: true,
+        durationEditable: true,
+        startEditable: true,
+        extendedProps: {
+          source: 'flexible_task',
+          category: task.category,
+          priority: task.priority,
+          duration,
+          taskId: task.id,
+          isFromAI,
+        },
+      }
+      }
+    )
+    const normalizedEvents = events.filter(
+      (event): event is CalendarEvent => event !== null
+    )
+
+    console.log('Eventos de tareas creados:', normalizedEvents.length)
+    return normalizedEvents
+  }, [mergedTasks])
+
   const allEvents = useMemo(() => {
-    // Asegurar que los eventos iniciales (Google Calendar) no sean editables
-    const nonEditableInitialEvents = initialEvents.map(event => ({
+    const nonEditableInitialEvents: CalendarEvent[] = [
+      ...staticInitialEvents,
+      ...googleEvents,
+    ].map((event) => ({
       ...event,
-      editable: false, // Bloquear edición de eventos externos
+      editable: false,
       durationEditable: false,
-      startEditable: false
+      startEditable: false,
     }))
-    
+
     const combined = [...nonEditableInitialEvents, ...taskEvents]
     console.log('Eventos del calendario:', {
-      initialEvents: initialEvents.length,
+      initialEvents: staticInitialEvents.length + googleEvents.length,
       taskEvents: taskEvents.length,
       total: combined.length,
-      taskEventsDetails: taskEvents.map(e => ({
-        id: e.id,
-        title: e.title,
-        start: e.start,
-        end: e.end,
-        isFromAI: e.extendedProps?.isFromAI
-      }))
+      taskEventsDetails: taskEvents.map((event) => ({
+        id: event.id,
+        title: event.title,
+        start: event.start,
+        end: event.end,
+        isFromAI: event.extendedProps?.isFromAI,
+      })),
     })
     return combined
-  }, [initialEvents, taskEvents])
+  }, [googleEvents, staticInitialEvents, taskEvents])
 
-  const renderEventContent = (eventInfo: any) => {
-    const isGoogle = eventInfo.event.extendedProps?.source === 'google'
-    const isTask = eventInfo.event.extendedProps?.source === 'flexible_task'
-    const isFromAI = eventInfo.event.extendedProps?.isFromAI
+  const renderEventContent = (eventInfo: EventContentArg) => {
+    const extendedProps = getExtendedProps(eventInfo.event.extendedProps)
+    const isGoogle = extendedProps.source === 'google'
+    const isTask = extendedProps.source === 'flexible_task'
+    const isFromAI = extendedProps.isFromAI
 
-    // Determinar colores según el tipo de evento
-    const getEventColors = () => {
-      if (isGoogle) {
-        return {
+    const colors = isGoogle
+      ? {
           bg: '#d1fae5',
           border: '#10b981',
-          text: '#065f46'
+          text: '#065f46',
         }
-      }
-      if (isTask) {
-        // Todas las tareas (usuario e IA) usan el mismo color azul/lila
-        return {
+      : isTask
+      ? {
           bg: '#5f5ef1',
           border: '#4a4ad8',
-          text: '#ffffff'
+          text: '#ffffff',
         }
-      }
-      // Eventos programados (TaskIA)
-      return {
-        bg: '#EEF2FF',
-        border: '#6366F1',
-        text: '#3730A3'
-      }
-    }
-
-    const colors = getEventColors()
+      : {
+          bg: '#EEF2FF',
+          border: '#6366F1',
+          text: '#3730A3',
+        }
 
     return (
       <div
@@ -281,11 +527,10 @@ export default function CalendarView({ initialEvents, flexibleTasks }: CalendarP
           className="text-[11px] font-semibold leading-tight truncate"
           style={{ color: colors.text }}
         >
-          {/* Icono para distinguir origen */}
-          {isGoogle && <span className="mr-1">📅</span>}
-          {isTask && isFromAI && <span className="mr-1">🤖</span>}
-          {isTask && !isFromAI && <span className="mr-1">📝</span>}
-          {!isGoogle && !isTask && <span className="mr-1">📋</span>}
+          {isGoogle && <span className="mr-1">{'\u{1F4C5}'}</span>}
+          {isTask && isFromAI && <span className="mr-1">{'\u{1F916}'}</span>}
+          {isTask && !isFromAI && <span className="mr-1">{'\u{1F4DD}'}</span>}
+          {!isGoogle && !isTask && <span className="mr-1">{'\u{1F4CB}'}</span>}
           {eventInfo.event.title}
         </p>
         <p
@@ -298,7 +543,6 @@ export default function CalendarView({ initialEvents, flexibleTasks }: CalendarP
     )
   }
 
-
   return (
     <>
       <div className="h-full w-full px-2 calendar-wrapper">
@@ -308,7 +552,7 @@ export default function CalendarView({ initialEvents, flexibleTasks }: CalendarP
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            right: 'dayGridMonth,timeGridWeek,timeGridDay',
           }}
           locales={[esLocale]}
           locale="es"
@@ -317,6 +561,7 @@ export default function CalendarView({ initialEvents, flexibleTasks }: CalendarP
           eventClick={handleEventClick}
           eventDrop={handleEventDrop}
           eventResize={handleEventResize}
+          datesSet={handleDatesSet}
           editable={true}
           selectable={true}
           height="100%"
@@ -329,18 +574,20 @@ export default function CalendarView({ initialEvents, flexibleTasks }: CalendarP
           slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
           eventMinHeight={28}
           eventMinWidth={50}
-          eventOverlap={false} // Evitar que eventos se solapen completamente
+          eventOverlap={false}
         />
       </div>
 
-      {/* Modal de detalles de tarea */}
       {selectedTask && (
         <TaskDetailModal
           task={selectedTask}
           onClose={() => setSelectedTask(null)}
-          showCompleteButton={false} // En el calendario no mostramos el botón de completar
+          showCompleteButton={false}
         />
       )}
     </>
   )
 }
+
+
+

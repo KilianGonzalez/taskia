@@ -342,7 +342,7 @@ export function Hero() {
                   </span>
                 </div>
                 <div className="text-xs leading-relaxed text-[#1D2155]/70">
-                  "Tienes 3 tareas por completar hoy"
+                  &quot;Tienes 3 tareas por completar hoy&quot;
                 </div>
               </FloatingCard>
 

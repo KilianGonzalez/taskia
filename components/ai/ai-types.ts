@@ -53,6 +53,7 @@ export type AiChange = {
   description: string
   reason: string
   affectedIds?: string[]
+  metadata?: Record<string, unknown>
 }
 
 export type AiConflict = {
@@ -69,6 +70,7 @@ export type AiSuggestion = {
   impact: 'low' | 'medium' | 'high'
   type: 'schedule' | 'task' | 'goal' | 'energy'
   ctaLabel?: string
+  metadata?: Record<string, unknown>
 }
 
 export type AiPlanStats = {
