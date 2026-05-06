@@ -28,7 +28,7 @@ export function DashboardShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header avatarUrl={avatarUrl} userName={userName} />
-        <main className="flex-1 overflow-auto page-shell">
+        <main className="flex-1 page-shell">
           <PageTransition className="app-page">{children}</PageTransition>
         </main>
       </div>
