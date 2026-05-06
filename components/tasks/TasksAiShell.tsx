@@ -525,7 +525,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
         </div>
       </div>
 
-      <div className="rounded-3xl overflow-hidden">
+      <div>
         <TasksClient initialTasks={initialTasks} />
       </div>
 

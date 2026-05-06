@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
@@ -39,6 +39,11 @@ type ProfileScreenProps = {
     timezone?: string | null
     preferences?: ProfilePreferences | null
   } | null
+  stats: {
+    completedTasks: number
+    currentStreak: number
+    achievedGoals: number
+  }
 }
 
 const emptySubscribe = () => () => {}
@@ -61,7 +66,7 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (value: boo
   )
 }
 
-export default function ProfileScreen({ user, profile }: ProfileScreenProps) {
+export default function ProfileScreen({ user, profile, stats }: ProfileScreenProps) {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
@@ -82,11 +87,41 @@ export default function ProfileScreen({ user, profile }: ProfileScreenProps) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(profile?.preferences?.notifications ?? true)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const hasSyncedThemeFromProfile = useRef(false)
 
-  const stats = [
-    { icon: CheckCircle2, label: 'Tareas completadas', value: '47', tone: 'text-emerald-600 dark:text-emerald-300' },
-    { icon: TrendingUp, label: 'Racha actual', value: '12', tone: 'text-primary' },
-    { icon: Target, label: 'Objetivos logrados', value: '8', tone: 'text-cyan-600 dark:text-cyan-300' },
+  useEffect(() => {
+    if (!mounted || hasSyncedThemeFromProfile.current) {
+      return
+    }
+
+    const preferredDarkMode = profile?.preferences?.darkMode
+    if (typeof preferredDarkMode !== 'boolean') {
+      hasSyncedThemeFromProfile.current = true
+      return
+    }
+
+    hasSyncedThemeFromProfile.current = true
+    setTheme(preferredDarkMode ? 'dark' : 'light')
+  }, [mounted, profile?.preferences?.darkMode, setTheme])
+
+  const persistThemePreference = async (enabled: boolean) => {
+    await supabase.from('profiles').upsert(
+      {
+        id: user.id,
+        preferences: {
+          ...profile?.preferences,
+          darkMode: enabled,
+        },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' }
+    )
+  }
+
+  const profileStats = [
+    { icon: CheckCircle2, label: 'Tareas completadas', value: String(stats.completedTasks), tone: 'text-emerald-600 dark:text-emerald-300' },
+    { icon: TrendingUp, label: 'Racha actual', value: String(stats.currentStreak), tone: 'text-primary' },
+    { icon: Target, label: 'Objetivos logrados', value: String(stats.achievedGoals), tone: 'text-cyan-600 dark:text-cyan-300' },
   ]
 
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,7 +217,7 @@ export default function ProfileScreen({ user, profile }: ProfileScreenProps) {
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3 stagger-in">
-            {stats.map((stat) => {
+            {profileStats.map((stat) => {
               const Icon = stat.icon
 
               return (
@@ -241,7 +276,13 @@ export default function ProfileScreen({ user, profile }: ProfileScreenProps) {
                     <p className="text-xs text-muted-foreground">Tema de la aplicacion</p>
                   </div>
                 </div>
-                <Toggle enabled={darkMode} onChange={(value) => setTheme(value ? 'dark' : 'light')} />
+                <Toggle
+                  enabled={darkMode}
+                  onChange={(value) => {
+                    setTheme(value ? 'dark' : 'light')
+                    void persistThemePreference(value)
+                  }}
+                />
               </div>
 
               <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5">

@@ -848,7 +848,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                 </div>
             )}
 
-            <div className="rounded-3xl overflow-hidden">
+            <div>
                 <GoalsClient
                     initialGoals={initialGoals.map((goal) => ({
                         ...goal,

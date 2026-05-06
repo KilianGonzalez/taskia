@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import type {
   DatesSetArg,
   EventClickArg,
@@ -30,6 +32,12 @@ interface CalendarProps {
     dueDate: string
     estimatedDurationMin?: number
   }) => void
+}
+
+type BlockedEditModalState = {
+  title: string
+  message: string
+  isFixedCommitment: boolean
 }
 
 function getExtendedProps(
@@ -103,8 +111,10 @@ export default function CalendarView({
   flexibleTasks,
   onTaskUpdated,
 }: CalendarProps) {
+  const router = useRouter()
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null)
   const [mirrorParent, setMirrorParent] = useState<HTMLElement | null>(null)
+  const [blockedEditModal, setBlockedEditModal] = useState<BlockedEditModalState | null>(null)
   const [lockHint, setLockHint] = useState<{
     text: string
     x: number
@@ -248,6 +258,39 @@ export default function CalendarView({
 
   const handleEventClick = (clickInfo: EventClickArg) => {
     const extendedProps = getExtendedProps(clickInfo.event.extendedProps)
+    const isNonEditable =
+      clickInfo.event.startEditable === false && clickInfo.event.durationEditable === false
+
+    if (isNonEditable) {
+      const metadata = extendedProps.metadata
+      const metadataSource =
+        metadata &&
+        typeof metadata === 'object' &&
+        typeof (metadata as Record<string, unknown>).source === 'string'
+          ? String((metadata as Record<string, unknown>).source)
+          : ''
+
+      const isFixedCommitment =
+        extendedProps.source === 'scheduled_block' &&
+        (extendedProps.blockType === 'fixed' ||
+          Boolean(extendedProps.fixedCommitmentId) ||
+          metadataSource === 'fixed_commitment' ||
+          metadataSource === 'legacy_scheduled_block')
+
+      const title = isFixedCommitment ? 'Compromiso fijo' : 'Bloque no editable'
+      const message = isFixedCommitment
+        ? 'Este bloque es fijo y no se puede modificar desde el calendario. Ve a la seccion "Compromisos" para editarlo.'
+        : getNonEditableHint(extendedProps)
+
+      hideLockHint()
+      setBlockedEditModal({
+        title,
+        message,
+        isFixedCommitment,
+      })
+      return
+    }
+
     if (extendedProps.source !== 'flexible_task' || !extendedProps.taskId) {
       return
     }
@@ -677,6 +720,43 @@ export default function CalendarView({
           {lockHint.text}
         </div>
       ) : null}
+
+      {blockedEditModal && mirrorParent ? createPortal(
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setBlockedEditModal(null)}
+          />
+          <div className="app-modal relative w-full max-w-md space-y-4 p-6">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">{blockedEditModal.title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{blockedEditModal.message}</p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              {blockedEditModal.isFixedCommitment ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBlockedEditModal(null)
+                    router.push('/dashboard/commitments')
+                  }}
+                  className="app-button-gradient"
+                >
+                  Ir a Compromisos
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setBlockedEditModal(null)}
+                className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      , mirrorParent) : null}
 
       {selectedTask && (
         <TaskDetailModal
