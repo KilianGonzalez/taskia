@@ -1,6 +1,7 @@
 ﻿'use client'
 
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { createBrowserClient } from '@supabase/ssr'
 import { useTheme } from 'next-themes'
 import { BarChart2, Bell, Calendar, Clock, Mail, Moon, Save, Sparkles, Sun } from 'lucide-react'
 
@@ -67,6 +68,17 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
   const darkMode = mounted ? theme === 'dark' : false
+  const [persistingTheme, setPersistingTheme] = useState(false)
+  const hasSyncedThemeFromProfile = useRef(false)
+
+  const supabase = useMemo(
+    () =>
+      createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      ),
+    []
+  )
 
   const [pushNotifications, setPushNotifications] = useState(true)
   const [emailNotifications, setEmailNotifications] = useState(false)
@@ -78,6 +90,76 @@ export default function SettingsPage() {
   const [startDay, setStartDay] = useState<'lunes' | 'domingo' | 'sabado'>('lunes')
   const [studyTimeStart, setStudyTimeStart] = useState('15:00')
   const [studyTimeEnd, setStudyTimeEnd] = useState('19:00')
+
+  useEffect(() => {
+    let cancelled = false
+
+    const syncThemeFromProfile = async () => {
+      if (!mounted || hasSyncedThemeFromProfile.current) {
+        return
+      }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        return
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('preferences')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      const preferredDarkMode = profile?.preferences?.darkMode
+      if (cancelled || typeof preferredDarkMode !== 'boolean') {
+        hasSyncedThemeFromProfile.current = true
+        return
+      }
+
+      hasSyncedThemeFromProfile.current = true
+      setTheme(preferredDarkMode ? 'dark' : 'light')
+    }
+
+    void syncThemeFromProfile()
+
+    return () => {
+      cancelled = true
+    }
+  }, [mounted, setTheme, supabase])
+
+  const persistThemePreference = async (enabled: boolean) => {
+    setPersistingTheme(true)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      setPersistingTheme(false)
+      return
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('preferences')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    await supabase.from('profiles').upsert(
+      {
+        id: user.id,
+        preferences: {
+          ...(profile?.preferences ?? {}),
+          darkMode: enabled,
+        },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' }
+    )
+    setPersistingTheme(false)
+  }
 
   const handleSave = () => {
     alert('Configuracion guardada')
@@ -149,7 +231,16 @@ export default function SettingsPage() {
               <p className="mt-0.5 text-xs text-muted-foreground">Cambia el tema de la aplicacion</p>
             </div>
           </div>
-          <Toggle enabled={darkMode} onChange={(value) => setTheme(value ? 'dark' : 'light')} />
+          <div className="inline-flex items-center gap-2">
+            {persistingTheme ? <Clock className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : null}
+            <Toggle
+              enabled={darkMode}
+              onChange={(value) => {
+                setTheme(value ? 'dark' : 'light')
+                void persistThemePreference(value)
+              }}
+            />
+          </div>
         </div>
       </Section>
     </div>

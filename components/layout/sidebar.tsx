@@ -29,12 +29,12 @@ export function Sidebar() {
 
   return (
     <div
-      className={`relative flex h-full flex-col border-r border-sidebar-border/75 bg-sidebar/92 backdrop-blur-sm transition-all duration-300 ${
+      className={`relative flex h-full flex-col border-r border-border/70 bg-background/80 backdrop-blur-lg transition-all duration-300 ${
         collapsed ? 'w-[4.4rem]' : 'w-64'
       }`}
     >
       <div
-        className={`flex h-16 items-center border-b border-sidebar-border/70 px-4 ${
+        className={`flex h-16 items-center border-b border-border/70 px-4 ${
           collapsed ? 'justify-center' : 'justify-between'
         }`}
       >
