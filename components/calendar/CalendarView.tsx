@@ -13,6 +13,7 @@ import type { EventResizeDoneArg } from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import esLocale from '@fullcalendar/core/locales/es'
+import { Lock } from 'lucide-react'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 import { getGoogleCalendarEventsInRange, updateFlexibleTask } from '@/app/actions'
 import type {
@@ -70,12 +71,46 @@ function formatLocalDateTime(dateValue: Date) {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
 }
 
+function getNonEditableHint(extendedProps: CalendarEventExtendedProps) {
+  if (extendedProps.source === 'google') {
+    return 'Evento de Google Calendar. Editalo en Google Calendar para cambiarlo.'
+  }
+
+  const metadata = extendedProps.metadata
+  const metadataSource =
+    metadata &&
+    typeof metadata === 'object' &&
+    typeof (metadata as Record<string, unknown>).source === 'string'
+      ? String((metadata as Record<string, unknown>).source)
+      : ''
+
+  const isFixedCommitment =
+    extendedProps.source === 'scheduled_block' &&
+    (extendedProps.blockType === 'fixed' ||
+      Boolean(extendedProps.fixedCommitmentId) ||
+      metadataSource === 'fixed_commitment' ||
+      metadataSource === 'legacy_scheduled_block')
+
+  if (isFixedCommitment) {
+    return 'Compromiso fijo. Editalo desde la seccion "Compromisos" para actualizar este bloque.'
+  }
+
+  return 'Este bloque no es editable desde el calendario.'
+}
+
 export default function CalendarView({
   initialEvents,
   flexibleTasks,
   onTaskUpdated,
 }: CalendarProps) {
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null)
+  const [mirrorParent, setMirrorParent] = useState<HTMLElement | null>(null)
+  const [lockHint, setLockHint] = useState<{
+    text: string
+    x: number
+    y: number
+  } | null>(null)
+  const lockHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [taskOverrides, setTaskOverrides] = useState<
     Record<string, { dueDate?: string; estimatedDurationMin?: number }>
   >({})
@@ -95,6 +130,41 @@ export default function CalendarView({
   useEffect(() => {
     setGoogleEvents(initialGoogleEvents)
   }, [initialGoogleEvents])
+
+  useEffect(() => {
+    setMirrorParent(document.body)
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (lockHintTimerRef.current) {
+        clearTimeout(lockHintTimerRef.current)
+      }
+    },
+    []
+  )
+
+  const hideLockHint = () => {
+    if (lockHintTimerRef.current) {
+      clearTimeout(lockHintTimerRef.current)
+      lockHintTimerRef.current = null
+    }
+    setLockHint(null)
+  }
+
+  const queueLockHint = (anchorElement: HTMLElement, text: string) => {
+    hideLockHint()
+    const rect = anchorElement.getBoundingClientRect()
+
+    lockHintTimerRef.current = setTimeout(() => {
+      setLockHint({
+        text,
+        x: rect.left + rect.width / 2,
+        y: Math.max(14, rect.top - 8),
+      })
+      lockHintTimerRef.current = null
+    }, 550)
+  }
 
   useEffect(() => {
     const validTaskIds = new Set(flexibleTasks.map((task) => task.id))
@@ -496,6 +566,9 @@ export default function CalendarView({
     const isGoogle = extendedProps.source === 'google'
     const isTask = extendedProps.source === 'flexible_task'
     const isFromAI = extendedProps.isFromAI
+    const isNonEditable =
+      eventInfo.event.startEditable === false && eventInfo.event.durationEditable === false
+    const nonEditableHint = isNonEditable ? getNonEditableHint(extendedProps) : null
 
     const colors = isGoogle
       ? {
@@ -517,14 +590,29 @@ export default function CalendarView({
 
     return (
       <div
-        className="flex flex-col h-full w-full px-2 py-1 overflow-hidden rounded-[6px] cursor-pointer"
+        className={`relative flex h-full w-full flex-col overflow-hidden rounded-[6px] px-2 py-1 ${
+          eventInfo.isMirror ? 'calendar-event-mirror-content' : 'cursor-pointer'
+        }`}
         style={{
           backgroundColor: colors.bg,
           borderLeft: `3px solid ${colors.border}`,
         }}
       >
+        {isNonEditable && nonEditableHint && !eventInfo.isMirror ? (
+          <span
+            className="calendar-event-lock"
+            onMouseEnter={(event) =>
+              queueLockHint(event.currentTarget as HTMLElement, nonEditableHint)
+            }
+            onMouseLeave={hideLockHint}
+            onMouseDown={hideLockHint}
+            aria-label={nonEditableHint}
+          >
+            <Lock className="h-[10px] w-[10px]" />
+          </span>
+        ) : null}
         <p
-          className="text-[11px] font-semibold leading-tight truncate"
+          className="truncate pr-4 text-[11px] font-semibold leading-tight"
           style={{ color: colors.text }}
         >
           {isGoogle && <span className="mr-1">{'\u{1F4C5}'}</span>}
@@ -563,6 +651,7 @@ export default function CalendarView({
           eventResize={handleEventResize}
           datesSet={handleDatesSet}
           editable={true}
+          fixedMirrorParent={mirrorParent ?? undefined}
           selectable={true}
           height="100%"
           slotMinTime="06:00:00"
@@ -577,6 +666,17 @@ export default function CalendarView({
           eventOverlap={false}
         />
       </div>
+
+      {lockHint ? (
+        <div
+          className="calendar-lock-tooltip"
+          style={{ left: lockHint.x, top: lockHint.y }}
+          role="status"
+          aria-live="polite"
+        >
+          {lockHint.text}
+        </div>
+      ) : null}
 
       {selectedTask && (
         <TaskDetailModal

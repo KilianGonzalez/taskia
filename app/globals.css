@@ -295,12 +295,46 @@
 /* Calendar theming */
 .calendar-wrapper .fc {
   font-family: inherit !important;
+  --fc-page-bg-color: color-mix(in oklch, var(--card) 96%, transparent);
+  --fc-neutral-bg-color: color-mix(in oklch, var(--card) 94%, transparent);
+  --fc-neutral-text-color: color-mix(in oklch, var(--foreground) 78%, transparent);
+  --fc-today-bg-color: color-mix(in oklch, var(--accent) 10%, transparent);
+  color: var(--foreground) !important;
 }
 
 .calendar-wrapper .fc-theme-standard td,
 .calendar-wrapper .fc-theme-standard th,
 .calendar-wrapper .fc-theme-standard .fc-scrollgrid {
   border-color: color-mix(in oklch, var(--border) 80%, transparent) !important;
+}
+
+.calendar-wrapper .fc .fc-col-header-cell {
+  background: color-mix(in oklch, var(--card) 96%, transparent) !important;
+}
+
+.calendar-wrapper .fc .fc-col-header,
+.calendar-wrapper .fc .fc-scrollgrid,
+.calendar-wrapper .fc .fc-scrollgrid-section-header > * {
+  background: color-mix(in oklch, var(--card) 96%, transparent) !important;
+}
+
+.calendar-wrapper .fc .fc-col-header-cell-cushion {
+  color: var(--foreground) !important;
+  font-weight: 600 !important;
+}
+
+.calendar-wrapper .fc .fc-timegrid-axis-cushion,
+.calendar-wrapper .fc .fc-timegrid-slot-label-cushion {
+  color: color-mix(in oklch, var(--foreground) 80%, transparent) !important;
+}
+
+.calendar-wrapper .fc .fc-scrollgrid-section-header .fc-scroller {
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+}
+
+.calendar-wrapper .fc .fc-scrollgrid-section-header .fc-scroller::-webkit-scrollbar {
+  display: none !important;
 }
 
 .calendar-wrapper .fc .fc-button {
@@ -323,11 +357,62 @@
   color: var(--primary-foreground) !important;
 }
 
-.calendar-wrapper .fc .fc-day-today {
-  background-color: color-mix(in oklch, var(--accent) 30%, transparent) !important;
+.calendar-wrapper .fc .fc-timegrid-col.fc-day-today,
+.calendar-wrapper .fc .fc-daygrid-day.fc-day-today {
+  background-color: color-mix(in oklch, var(--accent) 14%, transparent) !important;
+}
+
+.dark .calendar-wrapper .fc .fc-timegrid-col.fc-day-today,
+.dark .calendar-wrapper .fc .fc-daygrid-day.fc-day-today {
+  background-color: color-mix(in oklch, var(--accent) 8%, transparent) !important;
+}
+
+.calendar-wrapper .fc .fc-col-header-cell.fc-day-today {
+  background: color-mix(in oklch, var(--accent) 22%, var(--card)) !important;
 }
 
 .calendar-wrapper .fc-now-indicator-line,
 .calendar-wrapper .fc-now-indicator-arrow {
   border-color: var(--primary) !important;
+}
+
+.calendar-wrapper .fc .fc-event.fc-event-mirror {
+  opacity: 1 !important;
+  z-index: 60 !important;
+  box-shadow: 0 10px 26px color-mix(in oklch, black 26%, transparent) !important;
+}
+
+.calendar-wrapper .fc .fc-event.fc-event-mirror .calendar-event-mirror-content {
+  cursor: grabbing !important;
+}
+
+.calendar-wrapper .calendar-event-lock {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.24rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 0.25rem;
+  background: color-mix(in oklch, black 22%, transparent);
+  color: white;
+  opacity: 0.9;
+}
+
+.calendar-lock-tooltip {
+  position: fixed;
+  z-index: 130;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  max-width: 240px;
+  border-radius: 0.6rem;
+  border: 1px solid color-mix(in oklch, var(--border) 88%, transparent);
+  background: color-mix(in oklch, var(--card) 96%, transparent);
+  color: var(--foreground);
+  padding: 0.45rem 0.55rem;
+  font-size: 11px;
+  line-height: 1.3;
+  box-shadow: 0 10px 28px color-mix(in oklch, black 24%, transparent);
 }

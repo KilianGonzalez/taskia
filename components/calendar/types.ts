@@ -7,6 +7,11 @@ export type CalendarEventExtendedProps = {
   duration?: number
   taskId?: string
   isFromAI?: boolean
+  blockId?: string
+  blockType?: string
+  fixedCommitmentId?: string | null
+  metadata?: Record<string, unknown>
+  isLocked?: boolean
 }
 
 export type CalendarEvent = {
