@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Sparkles,
   CalendarClock,
@@ -8,14 +9,23 @@ import {
   ArrowUpCircle,
   CheckCircle2,
   Circle,
-  Brain,
   Target,
   X,
   Loader2,
   AlertCircle,
 } from "lucide-react";
 import { TasksClient } from "@/app/(dashboard)/dashboard/tasks/tasks-client";
-import { prioritizeTask, splitTaskWithAI, createTasksFromSplitTask } from "@/app/actions";
+import {
+  prioritizeTask,
+  splitTaskWithAI,
+  createTasksFromSplitTask,
+  distributeWeeklyTasks,
+} from "@/app/actions";
+import {
+  isHighTaskPriority,
+  toTaskPriorityLabel,
+  type TaskPriorityLabel,
+} from "@/lib/tasks/priority";
 
 type Task = {
   id: string;
@@ -26,9 +36,9 @@ type Task = {
   estimated_duration_min?: number;
   difficulty?: number;
   notes?: string;
-  completed?: boolean;
+  completed: boolean;
   completed_at?: string;
-  created_at?: string;
+  created_at: string;
 };
 
 type TasksAiShellProps = {
@@ -42,7 +52,69 @@ type Suggestion = {
   tone: "info" | "focus" | "urgent";
 };
 
+type SuggestedSplitSession = {
+  title: string;
+  durationMin: number;
+  focus: string;
+  reason: string;
+  suggestedTime?: string;
+};
+
+type SuggestedSplitPlan = {
+  summary: string;
+  sessions: SuggestedSplitSession[];
+};
+
+const taskPriorityColors: Record<TaskPriorityLabel, string> = {
+  baja: "bg-gray-100 text-gray-600 border-gray-300",
+  media: "bg-blue-100 text-blue-600 border-blue-300",
+  alta: "bg-red-100 text-red-600 border-red-300",
+};
+
+const taskPriorityLabels: Record<TaskPriorityLabel, string> = {
+  baja: "Baja",
+  media: "Media",
+  alta: "Alta",
+};
+
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function extractQuotedText(value: string) {
+  const match = value.match(/["']([^"']+)["']/);
+  return match?.[1]?.trim() ?? null;
+}
+
+function findTaskByPrompt(prompt: string, tasks: Task[]) {
+  const normalizedPrompt = normalizeSearchText(prompt);
+  const quotedTaskTitle = extractQuotedText(prompt);
+
+  if (quotedTaskTitle) {
+    const normalizedQuotedTitle = normalizeSearchText(quotedTaskTitle);
+    const exactMatch =
+      tasks.find(
+        (task) => normalizeSearchText(task.title) === normalizedQuotedTitle
+      ) ??
+      tasks.find((task) =>
+        normalizeSearchText(task.title).includes(normalizedQuotedTitle)
+      );
+
+    if (exactMatch) {
+      return exactMatch;
+    }
+  }
+
+  return tasks.find((task) =>
+    normalizedPrompt.includes(normalizeSearchText(task.title))
+  );
+}
+
 export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
+  const router = useRouter();
   const [command, setCommand] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
@@ -50,8 +122,10 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
   const [prioritizeModalOpen, setPrioritizeModalOpen] = useState(false);
   const [splitModalOpen, setSplitModalOpen] = useState(false);
   const [splitPlanOpen, setSplitPlanOpen] = useState(false);
-  const [splitTaskTitle, setSplitTaskTitle] = useState("");
-  const [suggestedSplit, setSuggestedSplit] = useState<any>(null);
+  const [selectedSplitTask, setSelectedSplitTask] = useState<Task | null>(null);
+  const [suggestedSplit, setSuggestedSplit] = useState<SuggestedSplitPlan | null>(
+    null
+  );
   const [savingSplitTasks, setSavingSplitTasks] = useState(false);
 
   const pendingTasks = useMemo(
@@ -60,18 +134,12 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
   );
 
   const highPriorityTasks = useMemo(
-    () =>
-      pendingTasks.filter((task) =>
-        ["alta", "high", "urgent"].includes(String(task.priority ?? "").toLowerCase())
-      ),
+    () => pendingTasks.filter((task) => isHighTaskPriority(task.priority)),
     [pendingTasks]
   );
 
   const longTasks = useMemo(
-    () =>
-      pendingTasks.filter(
-        (task) => (task.estimated_duration_min ?? 0) >= 90
-      ),
+    () => pendingTasks.filter((task) => (task.estimated_duration_min ?? 0) >= 90),
     [pendingTasks]
   );
 
@@ -102,16 +170,18 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
     if (pendingTasks.length > 0) {
       return {
         id: "calendar",
-        title: "Llévalas al calendario",
-        description: "Puedes convertir tareas pendientes en bloques planificados para la semana.",
+        title: "Llevalas al calendario",
+        description:
+          "Puedes convertir tareas pendientes en bloques planificados para la semana.",
         tone: "info",
       };
     }
 
     return {
       id: "done",
-      title: "Todo está al día",
-      description: "No tienes tareas pendientes ahora mismo. Buen momento para preparar la siguiente semana.",
+      title: "Todo esta al dia",
+      description:
+        "No tienes tareas pendientes ahora mismo. Buen momento para preparar la siguiente semana.",
       tone: "info",
     };
   }, [highPriorityTasks.length, longTasks.length, pendingTasks.length]);
@@ -121,6 +191,11 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
     focus: "bg-amber-50 border-amber-100 text-amber-700",
     urgent: "bg-rose-50 border-rose-100 text-rose-700",
   };
+
+  function showSuccess(message: string) {
+    setSaveSuccess(message);
+    setTimeout(() => setSaveSuccess(""), 3000);
+  }
 
   async function handlePrioritizeTasks() {
     setAiError("");
@@ -133,7 +208,10 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
     setPrioritizeModalOpen(true);
   }
 
-  async function handleSelectTaskToPrioritize(taskId: string, action?: 'up' | 'down' | 'auto') {
+  async function handleSelectTaskToPrioritize(
+    taskId: string,
+    action?: "up" | "down" | "auto"
+  ) {
     setAiLoading(true);
     setPrioritizeModalOpen(false);
 
@@ -146,13 +224,10 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
         return;
       }
 
-      setSaveSuccess(res.message || "Tarea priorizada correctamente.");
-      
-      // Limpiar el mensaje de éxito después de 3 segundos
-      setTimeout(() => setSaveSuccess(""), 3000);
-      
+      showSuccess(res.message || "Tarea priorizada correctamente.");
+      router.refresh();
     } catch (error) {
-      console.error('Error priorizando tarea:', error);
+      console.error("Error priorizando tarea:", error);
       setAiError("Error al priorizar tarea.");
       setAiLoading(false);
     }
@@ -183,14 +258,13 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
       }
 
       if (res?.data) {
-        console.log('Sesiones divididas:', res.data);
-        const selectedTask = pendingTasks.find(t => t.id === taskId);
-        setSplitTaskTitle(selectedTask?.title || '');
+        const selectedTask = pendingTasks.find((task) => task.id === taskId);
+        setSelectedSplitTask(selectedTask ?? null);
         setSuggestedSplit(res.data);
         setSplitPlanOpen(true);
       }
     } catch (error) {
-      console.error('Error dividiendo tarea:', error);
+      console.error("Error dividiendo tarea:", error);
       setAiError("Error al dividir tarea.");
       setAiLoading(false);
     }
@@ -202,9 +276,8 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
       return;
     }
 
-    const selectedTask = pendingTasks.find(t => t.title === splitTaskTitle);
-    if (!selectedTask) {
-      setAiError("No se encontró la tarea original.");
+    if (!selectedSplitTask) {
+      setAiError("No se encontro la tarea original.");
       return;
     }
 
@@ -213,8 +286,8 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
     setSavingSplitTasks(true);
 
     const res = await createTasksFromSplitTask({
-      originalTaskId: selectedTask.id,
-      originalTaskTitle: selectedTask.title,
+      originalTaskId: selectedSplitTask.id,
+      originalTaskTitle: selectedSplitTask.title,
       sessions: suggestedSplit.sessions,
     });
 
@@ -225,11 +298,91 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
       return;
     }
 
-    setSaveSuccess(`${res.created || suggestedSplit.sessions.length} tareas creadas correctamente. La tarea original fue archivada.`);
+    showSuccess(
+      `${res.created || suggestedSplit.sessions.length} tareas creadas correctamente. La tarea original fue archivada.`
+    );
     setSplitPlanOpen(false);
-    
-    // Limpiar el mensaje de éxito después de 3 segundos
-    setTimeout(() => setSaveSuccess(""), 3000);
+    router.refresh();
+  }
+
+  async function handleScheduleTasks() {
+    setAiError("");
+    setAiLoading(true);
+
+    try {
+      const res = await distributeWeeklyTasks();
+      setAiLoading(false);
+
+      if (res?.error) {
+        setAiError(res.error);
+        return;
+      }
+
+      showSuccess(res.message || "Tareas repartidas correctamente en la semana.");
+      router.refresh();
+    } catch (error) {
+      console.error("Error repartiendo tareas:", error);
+      setAiError("Error al llevar las tareas al calendario.");
+      setAiLoading(false);
+    }
+  }
+
+  async function handleCommandAction() {
+    const trimmedCommand = command.trim();
+    if (!trimmedCommand || aiLoading) {
+      return;
+    }
+
+    setAiError("");
+    setSaveSuccess("");
+
+    const normalizedCommand = normalizeSearchText(trimmedCommand);
+    const matchedTask = findTaskByPrompt(trimmedCommand, pendingTasks);
+
+    if (
+      normalizedCommand.includes("divid") ||
+      normalizedCommand.includes("troce") ||
+      normalizedCommand.includes("sesion")
+    ) {
+      setCommand("");
+      if (matchedTask) {
+        await handleSelectTaskToSplit(matchedTask.id);
+        return;
+      }
+
+      await handleSplitTasks();
+      return;
+    }
+
+    if (
+      normalizedCommand.includes("prioriz") ||
+      normalizedCommand.includes("importante") ||
+      normalizedCommand.includes("urgente")
+    ) {
+      setCommand("");
+      if (matchedTask) {
+        await handleSelectTaskToPrioritize(matchedTask.id, "auto");
+        return;
+      }
+
+      await handlePrioritizeTasks();
+      return;
+    }
+
+    if (
+      normalizedCommand.includes("calendario") ||
+      normalizedCommand.includes("agenda") ||
+      normalizedCommand.includes("planifica") ||
+      normalizedCommand.includes("programa")
+    ) {
+      setCommand("");
+      await handleScheduleTasks();
+      return;
+    }
+
+    setAiError(
+      'Prueba con algo como "Divide \'Trabajo final\'" o "Lleva mis tareas al calendario".'
+    );
   }
 
   return (
@@ -242,7 +395,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
       </div>
 
       <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_0.9fr_1.35fr] gap-4 xl:items-center">
           <div className="flex items-start gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center shrink-0">
               <Sparkles className="w-5 h-5" />
@@ -251,7 +404,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[#0f172a]">Asistente IA</p>
               <p className="text-xs text-gray-400 mb-2">
-                Comandos rápidos para organizar tus tareas
+                Comandos rapidos para organizar tus tareas
               </p>
 
               <div className={`rounded-xl border px-3 py-2.5 ${toneStyles[suggestion.tone]}`}>
@@ -261,66 +414,72 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
             </div>
           </div>
 
-          <div className="xl:w-[520px] w-full flex flex-col gap-3">
+          <div className="grid grid-cols-3 gap-2 max-w-[520px] w-full justify-self-center">
+            <button
+              type="button"
+              onClick={handleSplitTasks}
+              disabled={aiLoading}
+              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {aiLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Split className="w-4 h-4" />
+              )}
+              {aiLoading ? "Dividiendo..." : "Dividir"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePrioritizeTasks}
+              disabled={aiLoading}
+              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {aiLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ArrowUpCircle className="w-4 h-4" />
+              )}
+              {aiLoading ? "Priorizando..." : "Priorizar"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void handleScheduleTasks()}
+              disabled={aiLoading}
+              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {aiLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CalendarClock className="w-4 h-4" />
+              )}
+              {aiLoading ? "Repartiendo..." : "Al calendario"}
+            </button>
+          </div>
+
+          <div className="w-full xl:max-w-[620px] xl:justify-self-end">
             <div className="flex gap-2">
               <input
                 value={command}
-                onChange={(e) => setCommand(e.target.value)}
-                placeholder='Ej. "Divide matemáticas en 3 sesiones"'
-                className="flex-1 h-11 rounded-xl border border-gray-200 px-3 text-sm text-gray-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                onChange={(event) => setCommand(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void handleCommandAction();
+                  }
+                }}
+                placeholder='Ej. "Divide matematicas en 3 sesiones"'
+                className="flex-1 h-12 rounded-xl border border-gray-200 px-4 text-sm text-gray-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
               />
               <button
                 type="button"
-                className="h-11 px-4 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all"
+                onClick={() => void handleCommandAction()}
+                disabled={aiLoading || !command.trim()}
+                className="h-12 px-6 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all shrink-0 disabled:opacity-50"
                 style={{ background: "linear-gradient(90deg, #1e2d5e, #2d4a8a)" }}
               >
                 Probar
-              </button>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={handleSplitTasks}
-                disabled={aiLoading}
-                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {aiLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Split className="w-4 h-4" />
-                )}
-                {aiLoading ? "Dividiendo..." : "Dividir"}
-              </button>
-
-              <button
-                type="button"
-                onClick={handlePrioritizeTasks}
-                disabled={aiLoading}
-                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {aiLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <ArrowUpCircle className="w-4 h-4" />
-                )}
-                {aiLoading ? "Priorizando..." : "Priorizar"}
-              </button>
-
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
-              >
-                <CalendarClock className="w-4 h-4" />
-                Al calendario
-              </button>
-
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
-              >
-                <Brain className="w-4 h-4" />
-                Repartir semana
               </button>
             </div>
           </div>
@@ -367,10 +526,9 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
       </div>
 
       <div className="rounded-3xl overflow-hidden">
-        <TasksClient initialTasks={initialTasks as any} />
+        <TasksClient initialTasks={initialTasks} />
       </div>
 
-      {/* Modal de Priorización de Tareas */}
       {prioritizeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
@@ -399,19 +557,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
 
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {pendingTasks.map((task) => {
-                const priorityColors = {
-                  low: "bg-gray-100 text-gray-600 border-gray-300",
-                  medium: "bg-blue-100 text-blue-600 border-blue-300",
-                  high: "bg-red-100 text-red-600 border-red-300"
-                };
-
-                const priorityLabels = {
-                  low: "Baja",
-                  medium: "Media",
-                  high: "Alta"
-                };
-
-                const currentPriority = (task.priority as 'low' | 'medium' | 'high') || 'medium';
+                const currentPriority = toTaskPriorityLabel(task.priority);
 
                 return (
                   <div
@@ -424,8 +570,10 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                           {task.title}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
-                          <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${priorityColors[currentPriority]}`}>
-                            {priorityLabels[currentPriority]}
+                          <span
+                            className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${taskPriorityColors[currentPriority]}`}
+                          >
+                            {taskPriorityLabels[currentPriority]}
                           </span>
                           {task.estimated_duration_min && (
                             <span className="text-xs text-gray-500">
@@ -444,7 +592,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => handleSelectTaskToPrioritize(task.id, 'up')}
+                        onClick={() => void handleSelectTaskToPrioritize(task.id, "up")}
                         disabled={aiLoading}
                         className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-2 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 transition-all disabled:opacity-50"
                       >
@@ -454,7 +602,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
 
                       <button
                         type="button"
-                        onClick={() => handleSelectTaskToPrioritize(task.id, 'down')}
+                        onClick={() => void handleSelectTaskToPrioritize(task.id, "down")}
                         disabled={aiLoading}
                         className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-2 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-100 transition-all disabled:opacity-50"
                       >
@@ -464,7 +612,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
 
                       <button
                         type="button"
-                        onClick={() => handleSelectTaskToPrioritize(task.id, 'auto')}
+                        onClick={() => void handleSelectTaskToPrioritize(task.id, "auto")}
                         disabled={aiLoading}
                         className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-all disabled:opacity-50"
                       >
@@ -488,7 +636,6 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
         </div>
       )}
 
-      {/* Modal de Selección de Tarea para Dividir */}
       {splitModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
@@ -498,11 +645,9 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
           <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-[#0f172a]">
-                  Dividir tarea
-                </h3>
+                <h3 className="text-lg font-bold text-[#0f172a]">Dividir tarea</h3>
                 <p className="text-sm text-gray-400 mt-0.5">
-                  Elige una tarea para que la IA la divida en sesiones más pequeñas
+                  Elige una tarea para que la IA la divida en sesiones mas pequenas
                 </p>
               </div>
 
@@ -517,25 +662,13 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
 
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {pendingTasks.map((task) => {
-                const priorityColors = {
-                  low: "bg-gray-100 text-gray-600 border-gray-300",
-                  medium: "bg-blue-100 text-blue-600 border-blue-300",
-                  high: "bg-red-100 text-red-600 border-red-300"
-                };
-
-                const priorityLabels = {
-                  low: "Baja",
-                  medium: "Media",
-                  high: "Alta"
-                };
-
-                const currentPriority = (task.priority as 'low' | 'medium' | 'high') || 'medium';
+                const currentPriority = toTaskPriorityLabel(task.priority);
 
                 return (
                   <div
                     key={task.id}
                     className="w-full rounded-2xl border border-gray-200 bg-[#f8fafc] p-4 hover:bg-white hover:border-purple-300 transition-all cursor-pointer"
-                    onClick={() => handleSelectTaskToSplit(task.id)}
+                    onClick={() => void handleSelectTaskToSplit(task.id)}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
@@ -543,8 +676,10 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                           {task.title}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
-                          <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${priorityColors[currentPriority]}`}>
-                            {priorityLabels[currentPriority]}
+                          <span
+                            className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${taskPriorityColors[currentPriority]}`}
+                          >
+                            {taskPriorityLabels[currentPriority]}
                           </span>
                           {task.estimated_duration_min && (
                             <span className="text-xs text-gray-500">
@@ -585,7 +720,6 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
         </div>
       )}
 
-      {/* Modal de Resultados de División */}
       {splitPlanOpen && suggestedSplit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
@@ -595,10 +729,8 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
           <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-[#0f172a]">
-                  Tarea dividida
-                </h3>
-                <p className="text-sm text-gray-400 mt-0.5">{splitTaskTitle}</p>
+                <h3 className="text-lg font-bold text-[#0f172a]">Tarea dividida</h3>
+                <p className="text-sm text-gray-400 mt-0.5">{selectedSplitTask?.title}</p>
               </div>
 
               <button
@@ -616,7 +748,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
             </div>
 
             <div className="space-y-3">
-              {suggestedSplit.sessions.map((session: any, index: number) => (
+              {suggestedSplit.sessions.map((session, index) => (
                 <div
                   key={`${session.title}-${index}`}
                   className="rounded-2xl border border-gray-100 bg-[#f8fafc] p-4"

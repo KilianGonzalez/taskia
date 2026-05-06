@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
     suggestGoalSessions,
     createTasksFromSuggestedSessions,
@@ -10,12 +11,10 @@ import {
 import {
     Sparkles,
     BookOpen,
-    CalendarClock,
     Target,
     TrendingUp,
     Trophy,
     Flame,
-    Brain,
     X,
     Loader2,
     AlertCircle,
@@ -25,15 +24,15 @@ import { GoalsClient } from "@/app/(dashboard)/dashboard/goals/goals-client";
 type Goal = {
     id: string;
     title: string;
-    description?: string;
-    category?: "academic" | "personal" | "habit";
+    description?: string | null;
+    category: "academic" | "personal" | "habit";
     current_value: number;
     target_value: number;
     unit: string;
-    due_date?: string;
-    status?: "active" | "completed" | "paused";
+    due_date?: string | null;
+    status: "active" | "completed" | "paused";
     streak?: number;
-    created_at?: string;
+    created_at: string;
     priority?: 'low' | 'medium' | 'high';
 };
 
@@ -53,12 +52,53 @@ type GoalsAiShellProps = {
     initialGoals: Goal[];
 };
 
+function normalizeSearchText(value: string) {
+    return value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+}
+
+function extractQuotedText(value: string) {
+    const match = value.match(/["']([^"']+)["']/);
+    return match?.[1]?.trim() ?? null;
+}
+
+function findGoalByPrompt(prompt: string, goals: Goal[], category?: Goal["category"]) {
+    const normalizedPrompt = normalizeSearchText(prompt);
+    const quotedGoalTitle = extractQuotedText(prompt);
+    const candidateGoals = category
+        ? goals.filter((goal) => goal.category === category)
+        : goals;
+
+    if (quotedGoalTitle) {
+        const normalizedQuotedTitle = normalizeSearchText(quotedGoalTitle);
+        const exactMatch =
+            candidateGoals.find(
+                (goal) => normalizeSearchText(goal.title) === normalizedQuotedTitle
+            ) ??
+            candidateGoals.find((goal) =>
+                normalizeSearchText(goal.title).includes(normalizedQuotedTitle)
+            );
+
+        if (exactMatch) {
+            return exactMatch;
+        }
+    }
+
+    return candidateGoals.find((goal) =>
+        normalizedPrompt.includes(normalizeSearchText(goal.title))
+    );
+}
+
 export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
+    const router = useRouter();
     const [command, setCommand] = useState("");
     const [aiLoading, setAiLoading] = useState(false);
     const [aiError, setAiError] = useState("");
     const [planOpen, setPlanOpen] = useState(false);
     const [planGoalTitle, setPlanGoalTitle] = useState("");
+    const [selectedPlanGoal, setSelectedPlanGoal] = useState<Goal | null>(null);
     const [suggestedPlan, setSuggestedPlan] = useState<GoalPlanResult | null>(null);
     const [savingTasks, setSavingTasks] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState("");
@@ -79,10 +119,6 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
         () => activeGoals.filter((goal) => goal.category === "academic"),
         [activeGoals]
     );
-
-    const selectedAcademicGoal = useMemo(() => {
-        return activeGoals.find((goal) => goal.category === "academic") ?? null;
-    }, [activeGoals]);
 
     const avgProgress = useMemo(() => {
         if (!activeGoals.length) return 0;
@@ -131,6 +167,11 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
         };
     }, [academicGoals.length, activeGoals.length]);
 
+    function showSuccess(message: string) {
+        setSaveSuccess(message);
+        setTimeout(() => setSaveSuccess(""), 3000);
+    }
+
     async function handleSuggestSessions() {
         setAiError("");
 
@@ -161,7 +202,8 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
 
             if (res?.data) {
                 console.log('Sesiones sugeridas:', res.data);
-                const selectedGoal = academicGoals.find(g => g.id === goalId);
+                const selectedGoal = academicGoals.find((goal) => goal.id === goalId);
+                setSelectedPlanGoal(selectedGoal ?? null);
                 setPlanGoalTitle(selectedGoal?.title || '');
                 setSuggestedPlan(res.data);
                 setPlanOpen(true);
@@ -174,7 +216,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
     }
 
     async function handleSaveSuggestedSessions() {
-        if (!selectedAcademicGoal || !suggestedPlan?.sessions?.length) {
+        if (!selectedPlanGoal || !suggestedPlan?.sessions?.length) {
             setAiError("No hay sesiones para guardar.");
             return;
         }
@@ -184,8 +226,8 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
         setSavingTasks(true);
 
         const res = await createTasksFromSuggestedSessions({
-            goalId: selectedAcademicGoal.id,
-            goalTitle: selectedAcademicGoal.title,
+            goalId: selectedPlanGoal.id,
+            goalTitle: selectedPlanGoal.title,
             sessions: suggestedPlan.sessions,
         });
 
@@ -196,8 +238,9 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
             return;
         }
 
-        setSaveSuccess(`${res.created ?? suggestedPlan.sessions.length} tareas creadas correctamente.`);
+        showSuccess(`${res.created ?? suggestedPlan.sessions.length} tareas creadas correctamente.`);
         setPlanOpen(false);
+        router.refresh();
     }
 
     async function handlePrioritizeGoals() {
@@ -224,7 +267,8 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                 return;
             }
 
-            setSaveSuccess(res.message || "Objetivo priorizado correctamente.");
+            showSuccess(res.message || "Objetivo priorizado correctamente.");
+            router.refresh();
             
             // Limpiar el mensaje de éxito después de 3 segundos
             setTimeout(() => setSaveSuccess(""), 3000);
@@ -249,7 +293,8 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                 return;
             }
 
-            setSaveSuccess(res.message || "Tareas repartidas correctamente.");
+            showSuccess(res.message || "Tareas repartidas correctamente.");
+            router.refresh();
             
             // Limpiar el mensaje de éxito después de 3 segundos
             setTimeout(() => setSaveSuccess(""), 3000);
@@ -259,6 +304,69 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
             setAiError("Error al repartir tareas semanales.");
             setAiLoading(false);
         }
+    }
+
+    async function handleCommandAction() {
+        const trimmedCommand = command.trim();
+        if (!trimmedCommand || aiLoading) {
+            return;
+        }
+
+        setAiError("");
+        setSaveSuccess("");
+
+        const normalizedCommand = normalizeSearchText(trimmedCommand);
+        const matchedAcademicGoal = findGoalByPrompt(trimmedCommand, academicGoals, "academic");
+        const matchedActiveGoal = findGoalByPrompt(trimmedCommand, activeGoals);
+
+        if (
+            normalizedCommand.includes("sesion") ||
+            normalizedCommand.includes("planifica") ||
+            normalizedCommand.includes("divide") ||
+            normalizedCommand.includes("estudio")
+        ) {
+            setCommand("");
+
+            if (matchedAcademicGoal) {
+                await handleSelectGoalForSessions(matchedAcademicGoal.id);
+                return;
+            }
+
+            await handleSuggestSessions();
+            return;
+        }
+
+        if (
+            normalizedCommand.includes("prioriz") ||
+            normalizedCommand.includes("urgente") ||
+            normalizedCommand.includes("importante")
+        ) {
+            setCommand("");
+
+            if (matchedActiveGoal) {
+                await handleSelectGoalToPrioritize(matchedActiveGoal.id, "auto");
+                return;
+            }
+
+            await handlePrioritizeGoals();
+            return;
+        }
+
+        if (
+            normalizedCommand.includes("reparte") ||
+            normalizedCommand.includes("distribu") ||
+            normalizedCommand.includes("semana") ||
+            normalizedCommand.includes("calendario") ||
+            normalizedCommand.includes("tareas")
+        ) {
+            setCommand("");
+            await handleDistributeWeeklyTasks();
+            return;
+        }
+
+        setAiError(
+            'Prueba con algo como "Crea sesiones para \'Examen de historia\'" o "Prioriza mi objetivo de ingles".'
+        );
     }
 
     return (
@@ -290,7 +398,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 max-w-[340px] w-full justify-self-center">
+                    <div className="grid grid-cols-3 gap-2 max-w-[520px] w-full justify-self-center">
                         <button
                             type="button"
                             onClick={handleSuggestSessions}
@@ -318,6 +426,20 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                             )}
                             {aiLoading ? "Priorizando..." : "Priorizar"}
                         </button>
+
+                        <button
+                            type="button"
+                            onClick={handleDistributeWeeklyTasks}
+                            disabled={aiLoading}
+                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {aiLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Sparkles className="w-4 h-4" />
+                            )}
+                            {aiLoading ? "Repartiendo..." : "Repartir"}
+                        </button>
                     </div>
 
                     <div className="w-full xl:max-w-[620px] xl:justify-self-end">
@@ -325,11 +447,19 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                             <input
                                 value={command}
                                 onChange={(e) => setCommand(e.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                        event.preventDefault();
+                                        void handleCommandAction();
+                                    }
+                                }}
                                 placeholder='Ej. "Divide historia en 4 sesiones antes del viernes"'
                                 className="flex-1 h-12 rounded-xl border border-gray-200 px-4 text-sm text-gray-700 outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
                             />
                             <button
                                 type="button"
+                                onClick={() => void handleCommandAction()}
+                                disabled={aiLoading || !command.trim()}
                                 className="h-12 px-6 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all shrink-0"
                                 style={{ background: "linear-gradient(90deg, #10b981, #059669)" }}
                             >
@@ -719,7 +849,13 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
             )}
 
             <div className="rounded-3xl overflow-hidden">
-                <GoalsClient initialGoals={initialGoals as any} />
+                <GoalsClient
+                    initialGoals={initialGoals.map((goal) => ({
+                        ...goal,
+                        description: goal.description ?? undefined,
+                        due_date: goal.due_date ?? undefined,
+                    }))}
+                />
             </div>
         </div>
     );

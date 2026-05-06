@@ -44,10 +44,42 @@ function groupTasksByDate(tasks: Task[]) {
   return groups
 }
 
+function getTodayDateInputValue() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function isTaskOverdue(task: Task) {
+  if (task.completed || !task.due_date) {
+    return false
+  }
+
+  const dueDateRaw = task.due_date.trim()
+  const dateOnlyMatch = dueDateRaw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch
+    const dueDate = new Date(Number(year), Number(month) - 1, Number(day), 0, 0, 0, 0)
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    return dueDate < todayStart
+  }
+
+  const parsedDueDate = new Date(dueDateRaw)
+  if (Number.isNaN(parsedDueDate.getTime())) {
+    return false
+  }
+
+  return parsedDueDate.getTime() < Date.now()
+}
+
 // ── Modal Nueva Tarea ──────────────────────────────────
 function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const minDueDate = getTodayDateInputValue()
   const [form, setForm] = useState({
     title: '', category: '', priority: 'media',
     due_date: '', estimated_duration: '', difficulty: '2', notes: '',
@@ -56,6 +88,10 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title.trim()) { setError('El título es obligatorio'); return }
+    if (form.due_date && form.due_date < minDueDate) {
+      setError('La fecha de entrega no puede ser anterior a hoy')
+      return
+    }
     setLoading(true)
     const res = await createTask({
       title: form.title.trim(),
@@ -116,6 +152,7 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
             <label className={labelClass}>Fecha de entrega</label>
             <input type="date" value={form.due_date}
               onChange={e => setForm({ ...form, due_date: e.target.value })}
+              min={minDueDate}
               className={inputClass} />
           </div>
 
@@ -194,13 +231,26 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
         activeTab === 'todas' ? true :
         activeTab === 'pendientes' ? !t.completed :
         t.completed
-      return matchSearch && matchPriority && matchTab
+      const hideExpiredFromMainList = !t.completed && isTaskOverdue(t)
+      return matchSearch && matchPriority && matchTab && !hideExpiredFromMainList
     })
   }, [tasks, search, priorityFilter, activeTab])
 
   const pending   = tasks.filter(t => !t.completed)
   const completed = tasks.filter(t => t.completed)
-  const grouped   = groupTasksByDate(filtered.filter(t => activeTab === 'completadas' ? t.completed : !t.completed))
+  const visibleByTab = filtered.filter(t => activeTab === 'completadas' ? t.completed : !t.completed)
+  const grouped = groupTasksByDate(visibleByTab)
+  const expiredTasks = tasks.filter((task) => {
+    if (task.completed || !isTaskOverdue(task)) {
+      return false
+    }
+
+    const matchSearch = task.title.toLowerCase().includes(search.toLowerCase()) ||
+      (task.category?.toLowerCase().includes(search.toLowerCase()) ?? false)
+    const matchPriority = priorityFilter === 'todas' || task.priority === priorityFilter
+    return matchSearch && matchPriority
+  })
+  const groupedExpired = groupTasksByDate(expiredTasks)
 
   const handleToggle = async (taskId: string, current: boolean) => {
     // Si la tarea ya está completada, descompletar directamente
@@ -473,8 +523,70 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
               </div>
             )
           })}
+
+        </div>
+      )}
+      {Object.keys(groupedExpired).length > 0 && (
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center gap-2 px-1">
+            <span className="w-2 h-2 rounded-full bg-red-500" />
+            <h2 className="text-sm font-semibold text-red-600 dark:text-red-400">
+              Caducadas
+            </h2>
+          </div>
+
+          {Object.entries(groupedExpired).map(([date, dateTasks]) => (
+            <div key={`expired-${date}`} className="bg-white dark:bg-gray-900 rounded-2xl border border-red-100 dark:border-red-900 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-red-50 dark:border-red-900">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                  <span className="text-sm font-semibold text-[#0f172a] dark:text-white capitalize">{date}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">{dateTasks.length} tareas</span>
+                </div>
+              </div>
+
+              <div className="divide-y divide-gray-50 dark:divide-gray-800">
+                {dateTasks.map((task) => {
+                  const priority = priorityConfig[String(task.priority ?? '')] || priorityConfig.baja
+                  return (
+                    <div key={task.id} className="flex items-center gap-4 px-5 py-3.5 bg-red-50/20 dark:bg-red-950/10">
+                      <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate text-gray-800 dark:text-gray-200">
+                          {task.title}
+                        </p>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          {task.category && (
+                            <span className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500">
+                              <Tag className="w-3 h-3" />{task.category}
+                            </span>
+                          )}
+                          {task.due_date && (
+                            <span className="flex items-center gap-1 text-[11px] text-red-500 dark:text-red-400 font-medium">
+                              <Clock className="w-3 h-3" />
+                              {new Date(task.due_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                            </span>
+                          )}
+                          {task.estimated_duration_min && (
+                            <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                              ~{task.estimated_duration_min} min
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${priority.bg} ${priority.color}`}>
+                        {priority.label}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
   )
 }
+
+

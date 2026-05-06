@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Clock, Calendar, Target, ArrowRight, Lightbulb } from 'lucide-react'
 
@@ -23,6 +23,55 @@ const TIMEZONES = [
   'America/Lima',
   'America/Caracas',
 ]
+
+type Step1FormState = {
+  timezone: string
+  startTime: string
+  endTime: string
+  studyDays: number[]
+}
+
+const DEFAULT_STEP1_STATE: Step1FormState = {
+  timezone: 'Europa/Madrid',
+  startTime: '08:00',
+  endTime: '22:00',
+  studyDays: [0, 1, 2, 3, 4],
+}
+
+function getStoredStep1State(): Step1FormState {
+  if (typeof window === 'undefined') {
+    return DEFAULT_STEP1_STATE
+  }
+
+  const raw = localStorage.getItem(STORAGE_KEY)
+  if (!raw) {
+    return DEFAULT_STEP1_STATE
+  }
+
+  try {
+    const saved = JSON.parse(raw) as Partial<Step1FormState>
+
+    return {
+      timezone:
+        typeof saved.timezone === 'string'
+          ? saved.timezone
+          : DEFAULT_STEP1_STATE.timezone,
+      startTime:
+        typeof saved.startTime === 'string'
+          ? saved.startTime
+          : DEFAULT_STEP1_STATE.startTime,
+      endTime:
+        typeof saved.endTime === 'string'
+          ? saved.endTime
+          : DEFAULT_STEP1_STATE.endTime,
+      studyDays: Array.isArray(saved.studyDays)
+        ? saved.studyDays.filter((day): day is number => typeof day === 'number')
+        : DEFAULT_STEP1_STATE.studyDays,
+    }
+  } catch {
+    return DEFAULT_STEP1_STATE
+  }
+}
 
 function Stepper({ current }: { current: number }) {
   return (
@@ -83,31 +132,28 @@ function Stepper({ current }: { current: number }) {
 export default function OnboardingPage() {
   const router = useRouter()
 
-  const [timezone, setTimezone] = useState('Europa/Madrid')
-  const [startTime, setStartTime] = useState('08:00')
-  const [endTime, setEndTime] = useState('22:00')
-  const [studyDays, setStudyDays] = useState<number[]>([0, 1, 2, 3, 4])
-
-  useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return
-
-    try {
-      const saved = JSON.parse(raw)
-      setTimezone(saved.timezone ?? 'Europa/Madrid')
-      setStartTime(saved.startTime ?? '08:00')
-      setEndTime(saved.endTime ?? '22:00')
-      setStudyDays(saved.studyDays ?? [0, 1, 2, 3, 4])
-    } catch {}
-  }, [])
+  const [stepState, setStepState] = useState<Step1FormState>(getStoredStep1State)
 
   const toggleDay = (index: number) => {
-    setStudyDays((prev) =>
-      prev.includes(index)
-        ? prev.filter((d) => d !== index)
-        : [...prev, index].sort((a, b) => a - b)
-    )
+    setStepState((prev) => ({
+      ...prev,
+      studyDays: prev.studyDays.includes(index)
+        ? prev.studyDays.filter((day) => day !== index)
+        : [...prev.studyDays, index].sort((a, b) => a - b),
+    }))
   }
+
+  const updateStepState = <Key extends keyof Step1FormState>(
+    key: Key,
+    value: Step1FormState[Key]
+  ) => {
+    setStepState((prev) => ({
+      ...prev,
+      [key]: value,
+    }))
+  }
+
+  const { timezone, startTime, endTime, studyDays } = stepState
 
   const persistStep = () => {
     localStorage.setItem(
@@ -160,7 +206,7 @@ export default function OnboardingPage() {
           </label>
           <select
             value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
+            onChange={(e) => updateStepState('timezone', e.target.value)}
             className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300 transition-all"
           >
             {TIMEZONES.map((tz) => (
@@ -179,7 +225,7 @@ export default function OnboardingPage() {
             <input
               type="time"
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={(e) => updateStepState('startTime', e.target.value)}
               className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300 transition-all"
             />
           </div>
@@ -191,7 +237,7 @@ export default function OnboardingPage() {
             <input
               type="time"
               value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
+              onChange={(e) => updateStepState('endTime', e.target.value)}
               className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300 transition-all"
             />
           </div>

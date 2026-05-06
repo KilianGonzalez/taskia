@@ -1,14 +1,35 @@
 // src/components/profile/ProfileScreen.tsx (actualizado COMPLETO)
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, LogOut, User, Calendar, Bell, Moon, HelpCircle, Shield, CheckCircle, TrendingUp, Target, X } from "lucide-react";
+import { UserAvatar } from "@/components/shared/user-avatar";
 
-export default function ProfileScreen({ user, profile }: any) {
+type ProfilePreferences = {
+  avatar_url?: string | null;
+  notifications?: boolean;
+  darkMode?: boolean;
+} & Record<string, unknown>;
+
+type ProfileScreenProps = {
+  user: {
+    id: string;
+    email?: string | null;
+    fullName?: string | null;
+    avatarUrl?: string | null;
+  };
+  profile?: {
+    display_name?: string | null;
+    timezone?: string | null;
+    preferences?: ProfilePreferences | null;
+  } | null;
+};
+
+export default function ProfileScreen({ user, profile }: ProfileScreenProps) {
   const router = useRouter();
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,7 +39,9 @@ export default function ProfileScreen({ user, profile }: any) {
   const [displayName, setDisplayName] = useState(profile?.display_name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [timezone, setTimezone] = useState(profile?.timezone ?? "");
-  const [avatarUrl, setAvatarUrl] = useState(profile?.preferences?.avatar_url ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(
+    profile?.preferences?.avatar_url ?? user?.avatarUrl ?? ""
+  );
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(profile?.preferences?.notifications ?? true);
@@ -93,22 +116,11 @@ export default function ProfileScreen({ user, profile }: any) {
             <div className="flex flex-col items-center gap-4 mb‑32 lg:mb‑40"> {/* ← items-center */}
             <div className="relative group">
                 <div className="w-24 h-24 rounded-full border-4 border-white/30 bg-gradient-to-br from-white/20 to-white/10 flex items-center justify-center shadow-2xl">
-                {avatarUrl ? (
-                    <img
-                    src={avatarUrl}
-                    alt="Avatar"
-                    className="w-full h-full rounded-full object-cover"
-                    />
-                ) : (
-                    <div className="text-2xl font-bold text-white">
-                    {displayName
-                        ? displayName
-                            .split(' ')
-                            .map((n: any[]) => n[0])
-                            .join('')
-                        : 'MG'}
-                    </div>
-                )}
+                <UserAvatar
+                    avatarUrl={avatarUrl}
+                    name={displayName || user.fullName}
+                    fallbackClassName="bg-transparent text-2xl font-bold text-white"
+                />
                 </div>
                 <label className="absolute -bottom-2 -right-2 bg-[#4EC4A9] p-2 rounded-full border-4 border-white shadow-lg cursor-pointer group-hover:scale-110 transition-all duration-200">
                 <Camera className="h-4 w-4 text-white" />

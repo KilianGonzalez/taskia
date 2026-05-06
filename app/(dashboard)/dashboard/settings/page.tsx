@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { useTheme } from 'next-themes'
 import {
   Bell, Mail, Clock, Calendar,
   BarChart2, Sparkles, Save, Moon, Sun,
 } from 'lucide-react'
+
+const emptySubscribe = () => () => {}
 
 // ── Toggle ─────────────────────────────────────────────
 interface ToggleProps {
@@ -83,8 +85,7 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
 
   // ✅ Fix hydration: esperar al mount para leer el tema real
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
   const darkMode = mounted ? theme === 'dark' : false
 
   // Notificaciones

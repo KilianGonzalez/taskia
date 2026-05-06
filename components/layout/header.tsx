@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { UserAvatar } from "@/components/shared/user-avatar"
 
 interface HeaderProps {
   avatarUrl?: string | null
@@ -40,15 +41,6 @@ export function Header({ avatarUrl, userName }: HeaderProps) {
     router.push("/profile")
   }
 
-  const getInitials = (name?: string) => {
-    if (!name) return 'U'
-    return name
-      .split(' ')
-      .slice(0, 2)
-      .map(n => n[0]?.toUpperCase())
-      .join('')
-  }
-
   return (
     <header className="border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur sticky top-0 z-40 px-6">
       <div className="flex h-14 items-center justify-between">
@@ -80,17 +72,7 @@ export function Header({ avatarUrl, userName }: HeaderProps) {
             className="h-8 w-8 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 flex items-center justify-center bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 relative group transition-colors"
             title="Ver perfil"
           >
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt="Perfil"
-                className="h-full w-full object-cover rounded-full"
-              />
-            ) : (
-              <div className="h-full w-full bg-gradient-to-br from-[#1e2d5e] to-[#2d4a8a] flex items-center justify-center rounded-full text-xs font-semibold text-white">
-                {getInitials(userName)}
-              </div>
-            )}
+            <UserAvatar avatarUrl={avatarUrl} name={userName} />
             {/* Tooltip */}
             <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-700 text-white text-xs px-2 py-1 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap pointer-events-none z-50">
               Ver perfil

@@ -18,7 +18,15 @@ export default async function ProfilePage() {
 
   return (
     <ProfileScreen 
-      user={{ id: user.id, email: user.email, fullName: user.user_metadata?.full_name }}
+      user={{
+        id: user.id,
+        email: user.email,
+        fullName: user.user_metadata?.full_name,
+        avatarUrl:
+          user.user_metadata?.avatar_url ??
+          user.user_metadata?.picture ??
+          null,
+      }}
       profile={profile} 
     />
   );

@@ -2,6 +2,12 @@ import { createClient } from '@/lib/supabase/server'
 import { SidebarProvider } from '@/components/layout/sidebar-context'
 import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { redirect } from 'next/navigation'
+import {
+  getGoogleAvatarUrl,
+  getGoogleDisplayName,
+  getStoredGoogleIntegrationState,
+  mergeGoogleIntegrationPreferences,
+} from '@/lib/google/integration'
 
 export default async function DashboardLayout({
   children,
@@ -24,21 +30,19 @@ export default async function DashboardLayout({
     .eq('id', user.id)
     .maybeSingle()
 
-  const mergedPreferences = {
-    ...(existingProfile?.preferences ?? {}),
-    ...(user.user_metadata?.avatar_url
-      ? { avatar_url: user.user_metadata.avatar_url }
-      : {}),
-    ...(user.user_metadata?.picture
-      ? { avatar_url: user.user_metadata.picture }
-      : {}),
-  }
+  const googleAvatarUrl = getGoogleAvatarUrl(user)
+  const googleDisplayName = getGoogleDisplayName(user)
+  const mergedPreferences = mergeGoogleIntegrationPreferences(
+    existingProfile?.preferences,
+    {
+      avatarUrl: googleAvatarUrl,
+    }
+  )
 
   const resolvedName =
     existingProfile?.full_name ||
     existingProfile?.display_name ||
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
+    googleDisplayName ||
     user.email?.split('@')[0] ||
     'Usuario'
 
@@ -50,13 +54,11 @@ export default async function DashboardLayout({
       email: user.email ?? null,
       full_name:
         existingProfile?.full_name ||
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
+        googleDisplayName ||
         null,
       display_name:
         existingProfile?.display_name ||
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
+        googleDisplayName ||
         null,
       preferences: mergedPreferences,
       onboarding_completed: onboardingCompleted,
@@ -69,7 +71,7 @@ export default async function DashboardLayout({
     redirect('/onboarding')
   }
 
-  const avatarUrl = mergedPreferences?.avatar_url || null
+  const avatarUrl = getStoredGoogleIntegrationState(mergedPreferences).avatarUrl
 
   return (
     <SidebarProvider>
