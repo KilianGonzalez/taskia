@@ -17,9 +17,9 @@ export function DashboardShell({
   const { collapsed } = useSidebar()
 
   return (
-    <div className="flex h-screen bg-transparent">
+    <div className="flex min-h-screen bg-transparent">
       <aside
-        className={`hidden shrink-0 lg:flex transition-all duration-300 ${
+        className={`hidden shrink-0 self-start lg:sticky lg:top-0 lg:flex lg:h-screen transition-all duration-300 ${
           collapsed ? 'lg:w-[4.4rem]' : 'lg:w-64'
         }`}
       >

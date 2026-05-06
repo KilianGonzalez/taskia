@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
@@ -210,7 +210,7 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [search, setSearch] = useState('')
   const [priorityFilter, setPriorityFilter] = useState<string>('todas')
-  const [activeTab, setActiveTab] = useState<'todas' | 'pendientes' | 'completadas'>('todas')
+  const [activeTab, setActiveTab] = useState<'todas' | 'pendientes' | 'completadas' | 'caducadas'>('todas')
   const [showModal, setShowModal] = useState(false)
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -221,35 +221,37 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
     setTasks(initialTasks)
   }, [initialTasks])
 
+  const pending = useMemo(
+    () => tasks.filter((task) => !task.completed && !isTaskOverdue(task)),
+    [tasks]
+  )
+  const expired = useMemo(
+    () => tasks.filter((task) => !task.completed && isTaskOverdue(task)),
+    [tasks]
+  )
+  const completed = useMemo(() => tasks.filter((task) => task.completed), [tasks])
+  const totalWithoutExpired = tasks.length - expired.length
+
   const filtered = useMemo(() => {
-    return tasks.filter((t) => {
-      const matchSearch = t.title.toLowerCase().includes(search.toLowerCase()) ||
-        (t.category?.toLowerCase().includes(search.toLowerCase()) ?? false)
-      const matchPriority = priorityFilter === 'todas' || t.priority === priorityFilter
+    return tasks.filter((task) => {
+      const isExpiredTask = !task.completed && isTaskOverdue(task)
+      const matchSearch = task.title.toLowerCase().includes(search.toLowerCase()) ||
+        (task.category?.toLowerCase().includes(search.toLowerCase()) ?? false)
+      const matchPriority = priorityFilter === 'todas' || task.priority === priorityFilter
       const matchTab =
-        activeTab === 'todas' ? true :
-        activeTab === 'pendientes' ? !t.completed :
-        t.completed
-      const hideExpiredFromMainList = !t.completed && isTaskOverdue(t)
-      return matchSearch && matchPriority && matchTab && !hideExpiredFromMainList
+        activeTab === 'todas'
+          ? !isExpiredTask
+          : activeTab === 'pendientes'
+          ? !task.completed && !isExpiredTask
+          : activeTab === 'completadas'
+          ? task.completed
+          : !task.completed && isExpiredTask
+
+      return matchSearch && matchPriority && matchTab
     })
   }, [tasks, search, priorityFilter, activeTab])
 
-  const pending   = tasks.filter(t => !t.completed)
-  const completed = tasks.filter(t => t.completed)
-  const visibleByTab = filtered.filter(t => activeTab === 'completadas' ? t.completed : !t.completed)
-  const grouped = groupTasksByDate(visibleByTab)
-  const expiredTasks = tasks.filter((task) => {
-    if (task.completed || !isTaskOverdue(task)) {
-      return false
-    }
-
-    const matchSearch = task.title.toLowerCase().includes(search.toLowerCase()) ||
-      (task.category?.toLowerCase().includes(search.toLowerCase()) ?? false)
-    const matchPriority = priorityFilter === 'todas' || task.priority === priorityFilter
-    return matchSearch && matchPriority
-  })
-  const groupedExpired = groupTasksByDate(expiredTasks)
+  const grouped = groupTasksByDate(filtered)
 
   const handleToggle = async (taskId: string, current: boolean) => {
     // Si la tarea ya está completada, descompletar directamente
@@ -379,9 +381,10 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
       {/* Tabs */}
       <div className="app-card flex w-fit items-center gap-1 p-1">
         {([
-          { key: 'todas',       label: 'Todas',       count: tasks.length },
+          { key: 'todas',       label: 'Total',       count: totalWithoutExpired },
           { key: 'pendientes',  label: 'Pendientes',  count: pending.length },
           { key: 'completadas', label: 'Completadas', count: completed.length },
+          { key: 'caducadas',   label: 'Caducadas',   count: expired.length },
         ] as const).map((tab) => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
@@ -406,23 +409,47 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
         <div className="text-center py-16 text-gray-400 dark:text-gray-600">
           <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">
-            {search ? 'No hay tareas que coincidan con la búsqueda' : '¡No tienes tareas pendientes!'}
+            {search
+              ? 'No hay tareas que coincidan con la búsqueda'
+              : activeTab === 'caducadas'
+              ? 'No tienes tareas caducadas'
+              : '¡No tienes tareas pendientes!'}
           </p>
-          {!search && <p className="text-sm mt-1">Crea una nueva tarea para empezar</p>}
+          {!search && activeTab !== 'caducadas' && (
+            <p className="text-sm mt-1">Crea una nueva tarea para empezar</p>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
           {Object.entries(grouped).map(([date, dateTasks]) => {
+            const isExpiredTab = activeTab === 'caducadas'
             const completedInGroup = dateTasks.filter(t => t.completed).length
             return (
-              <div key={date} className="app-card overflow-hidden">
+              <div
+                key={date}
+                className={`overflow-hidden ${
+                  isExpiredTab
+                    ? 'rounded-2xl border border-red-200/60 bg-card shadow-sm dark:border-red-900'
+                    : 'app-card'
+                }`}
+              >
 
                 {/* Cabecera grupo */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-gray-50 dark:border-gray-800">
+                <div
+                  className={`flex items-center justify-between px-5 py-3 border-b ${
+                    isExpiredTab
+                      ? 'border-red-50 dark:border-red-900'
+                      : 'border-gray-50 dark:border-gray-800'
+                  }`}
+                >
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <span className={`w-2 h-2 rounded-full ${isExpiredTab ? 'bg-red-500' : 'bg-indigo-500'}`} />
                     <span className="text-sm font-semibold capitalize text-foreground">{date}</span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">{completedInGroup}/{dateTasks.length} completadas</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      {isExpiredTab
+                        ? `${dateTasks.length} caducadas`
+                        : `${completedInGroup}/${dateTasks.length} completadas`}
+                    </span>
                   </div>
                 </div>
 
@@ -434,7 +461,11 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
                     return (
                       <div 
                         key={task.id}
-                        className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group cursor-pointer"
+                        className={`flex items-center gap-4 px-5 py-3.5 transition-colors group cursor-pointer ${
+                          isExpiredTab
+                            ? 'bg-red-50/20 dark:bg-red-950/10 hover:bg-red-50/40 dark:hover:bg-red-950/20'
+                            : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/50'
+                        }`}
                         onClick={() => {
                           if (!task.completed) {
                             setCompletingTask(task)
@@ -457,7 +488,7 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
                           }
                         </button>
 
-                        <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${isExpiredTab ? 'bg-red-500' : 'bg-indigo-500'}`} />
 
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-medium truncate ${
@@ -474,7 +505,13 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
                               </span>
                             )}
                             {task.due_date && (
-                              <span className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500">
+                              <span
+                                className={`flex items-center gap-1 text-[11px] ${
+                                  isExpiredTab
+                                    ? 'font-medium text-red-500 dark:text-red-400'
+                                    : 'text-gray-400 dark:text-gray-500'
+                                }`}
+                              >
                                 <Clock className="w-3 h-3" />
                                 {new Date(task.due_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                               </span>
@@ -521,65 +558,6 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
             )
           })}
 
-        </div>
-      )}
-      {Object.keys(groupedExpired).length > 0 && (
-        <div className="space-y-4 pt-2">
-          <div className="flex items-center gap-2 px-1">
-            <span className="w-2 h-2 rounded-full bg-red-500" />
-            <h2 className="text-sm font-semibold text-red-600 dark:text-red-400">
-              Caducadas
-            </h2>
-          </div>
-
-          {Object.entries(groupedExpired).map(([date, dateTasks]) => (
-            <div key={`expired-${date}`} className="overflow-hidden rounded-2xl border border-red-200/60 bg-card shadow-sm dark:border-red-900">
-              <div className="flex items-center justify-between px-5 py-3 border-b border-red-50 dark:border-red-900">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500" />
-                  <span className="text-sm font-semibold capitalize text-foreground">{date}</span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">{dateTasks.length} tareas</span>
-                </div>
-              </div>
-
-              <div className="divide-y divide-gray-50 dark:divide-gray-800">
-                {dateTasks.map((task) => {
-                  const priority = priorityConfig[String(task.priority ?? '')] || priorityConfig.baja
-                  return (
-                    <div key={task.id} className="flex items-center gap-4 px-5 py-3.5 bg-red-50/20 dark:bg-red-950/10">
-                      <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate text-gray-800 dark:text-gray-200">
-                          {task.title}
-                        </p>
-                        <div className="flex items-center gap-3 mt-0.5">
-                          {task.category && (
-                            <span className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500">
-                              <Tag className="w-3 h-3" />{task.category}
-                            </span>
-                          )}
-                          {task.due_date && (
-                            <span className="flex items-center gap-1 text-[11px] text-red-500 dark:text-red-400 font-medium">
-                              <Clock className="w-3 h-3" />
-                              {new Date(task.due_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
-                            </span>
-                          )}
-                          {task.estimated_duration_min && (
-                            <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                              ~{task.estimated_duration_min} min
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${priority.bg} ${priority.color}`}>
-                        {priority.label}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
         </div>
       )}
     </div>
