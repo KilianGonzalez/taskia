@@ -15,6 +15,19 @@ export const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY!,
 });
 
+function getPartText(part: unknown) {
+  if (
+    typeof part === "object" &&
+    part !== null &&
+    "text" in part &&
+    typeof part.text === "string"
+  ) {
+    return part.text;
+  }
+
+  return "";
+}
+
 export async function countInputTokens(contents: string) {
   const res = await ai.models.countTokens({
     model: GEMINI_MODEL,
@@ -36,7 +49,7 @@ export async function generateJson(contents: string) {
 
   const text =
     res.candidates?.[0]?.content?.parts
-      ?.map((part: any) => ("text" in part ? part.text : ""))
+      ?.map((part) => getPartText(part))
       .join("") ?? "";
 
   return {

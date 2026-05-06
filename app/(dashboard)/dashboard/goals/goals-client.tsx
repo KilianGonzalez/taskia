@@ -1,5 +1,8 @@
 "use client"
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -10,7 +13,7 @@ import {
 import { createGoal, deleteGoal, updateGoalProgress } from "@/app/actions"
 
 // ── Tipos ──────────────────────────────────────────────
-interface Goal {
+export interface Goal {
   id: string
   title: string
   description?: string
@@ -23,6 +26,13 @@ interface Goal {
   streak?: number
   created_at: string
   priority?: 'low' | 'medium' | 'high'
+}
+
+const GOAL_TAB_FILTER: Record<'Todos' | 'AcadÃ©mico' | 'Personal' | 'HÃ¡bitos', Goal['category'] | null> = {
+  'Todos': null,
+  'AcadÃ©mico': 'academic',
+  'Personal': 'personal',
+  'HÃ¡bitos': 'habit',
 }
 
 // ── Config visual ──────────────────────────────────────
@@ -41,10 +51,42 @@ const categoryConfig = {
   },
 }
 
+function getTodayDateInputValue() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function isGoalOverdue(goal: Goal) {
+  if (!goal.due_date || goal.status === 'completed') {
+    return false
+  }
+
+  const dueDateRaw = goal.due_date.trim()
+  const dateOnlyMatch = dueDateRaw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch
+    const dueDate = new Date(Number(year), Number(month) - 1, Number(day), 0, 0, 0, 0)
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    return dueDate < todayStart
+  }
+
+  const parsedDueDate = new Date(dueDateRaw)
+  if (Number.isNaN(parsedDueDate.getTime())) {
+    return false
+  }
+
+  return parsedDueDate.getTime() < Date.now()
+}
+
 // ── Modal Nuevo Objetivo ───────────────────────────────
 function NewGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const minDueDate = getTodayDateInputValue()
   const [form, setForm] = useState({
     title: '', description: '', category: 'academic',
     target_value: '100', unit: '%', due_date: '', priority: 'medium' as 'low' | 'medium' | 'high',
@@ -54,6 +96,7 @@ function NewGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
     e.preventDefault()
     if (!form.title.trim()) { setError('El título es obligatorio'); return }
     if (!form.target_value || Number(form.target_value) <= 0) { setError('El valor objetivo debe ser mayor que 0'); return }
+    if (form.due_date && form.due_date < minDueDate) { setError('La fecha límite no puede ser anterior a hoy'); return }
     setLoading(true)
     const res = await createGoal({
       title: form.title.trim(),
@@ -76,9 +119,9 @@ function NewGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+      <div className="app-modal relative w-full max-w-md space-y-5 p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#0f172a] dark:text-white">Nuevo objetivo</h2>
+          <h2 className="text-lg font-bold text-foreground">Nuevo objetivo</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -140,6 +183,7 @@ function NewGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
             <label className={labelClass}>Fecha límite</label>
             <input type="date" value={form.due_date}
               onChange={e => setForm({ ...form, due_date: e.target.value })}
+              min={minDueDate}
               className={inputClass} />
           </div>
 
@@ -180,8 +224,7 @@ function NewGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               Cancelar
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-60"
-              style={{ background: 'linear-gradient(90deg, #10b981, #059669)' }}>
+              className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 hover:brightness-110 transition-all disabled:opacity-60 bg-gradient-to-r from-emerald-500 to-emerald-700">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               {loading ? 'Guardando...' : 'Crear objetivo'}
             </button>
@@ -218,9 +261,9 @@ function UpdateProgressModal({ goal, onClose, onUpdated }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+      <div className="app-modal relative w-full max-w-sm space-y-5 p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#0f172a] dark:text-white">Actualizar progreso</h2>
+          <h2 className="text-lg font-bold text-foreground">Actualizar progreso</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <X className="w-5 h-5" />
           </button>
@@ -296,11 +339,18 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
 
   const activeGoals    = goals.filter(g => g.status === 'active')
   const completedGoals = goals.filter(g => g.status === 'completed')
+  const expiredGoals = activeGoals.filter((goal) => isGoalOverdue(goal))
+  const nonExpiredActiveGoals = activeGoals.filter((goal) => !isGoalOverdue(goal))
 
   const filtered = useMemo(() => {
-    if (activeTab === 'Todos') return activeGoals
-    return activeGoals.filter(g => g.category === tabFilter[activeTab])
-  }, [goals, activeTab])
+    if (activeTab === 'Todos') return nonExpiredActiveGoals
+    return nonExpiredActiveGoals.filter(g => g.category === tabFilter[activeTab])
+  }, [nonExpiredActiveGoals, activeTab, tabFilter])
+
+  const filteredExpired = useMemo(() => {
+    if (activeTab === 'Todos') return expiredGoals
+    return expiredGoals.filter(g => g.category === tabFilter[activeTab])
+  }, [expiredGoals, activeTab, tabFilter])
 
   const avgProgress = activeGoals.length > 0
     ? Math.round(activeGoals.reduce((acc, g) => acc + Math.min(100, Math.round((g.current_value / g.target_value) * 100)), 0) / activeGoals.length)
@@ -327,7 +377,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
   const tabIcons = [Target, BookOpen, Heart, Zap]
 
   return (
-    <div className="min-h-full bg-[#f8fafc] dark:bg-gray-950 p-6 space-y-6">
+    <div className="space-y-6">
 
       {showNewModal && (
         <NewGoalModal onClose={() => setShowNewModal(false)} onCreated={() => router.refresh()} />
@@ -340,14 +390,12 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#0f172a] dark:text-white">Mis Objetivos</h1>
+          <h1 className="text-2xl font-bold text-foreground">Mis objetivos</h1>
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">
             {activeGoals.length} activos · {completedGoals.length} completados
           </p>
         </div>
-        <button onClick={() => setShowNewModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-all"
-          style={{ background: 'linear-gradient(90deg, #10b981, #059669)' }}>
+        <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:brightness-110">
           <Plus className="w-4 h-4" />
           Nuevo objetivo
         </button>
@@ -362,12 +410,12 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
         ].map((metric) => {
           const Icon = metric.icon
           return (
-            <div key={metric.label} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 flex items-center gap-4">
+            <div key={metric.label} className="app-card flex items-center gap-4 p-4">
               <div className={`w-10 h-10 rounded-xl ${metric.bg} flex items-center justify-center shrink-0`}>
                 <Icon className={`w-5 h-5 ${metric.color}`} />
               </div>
               <div>
-                <p className="text-xl font-bold text-[#0f172a] dark:text-white">{metric.value}</p>
+                <p className="text-xl font-bold text-foreground">{metric.value}</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500">{metric.label}</p>
               </div>
             </div>
@@ -376,7 +424,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-1 w-fit shadow-sm">
+      <div className="app-card flex w-fit items-center gap-1 p-1">
         {tabs.map((tab, i) => {
           const Icon = tabIcons[i]
           return (
@@ -409,7 +457,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
 
             return (
               <div key={goal.id}
-                className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 hover:shadow-md transition-all group">
+                className="app-card group p-5 transition-all hover:shadow-md">
                 <div className="flex items-start gap-4">
                   <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center shrink-0 mt-0.5`}>
                     <CategoryIcon className={`w-5 h-5 ${config.color}`} />
@@ -418,7 +466,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h3 className="font-semibold text-[#0f172a] dark:text-white">{goal.title}</h3>
+                        <h3 className="font-semibold text-foreground">{goal.title}</h3>
                         {goal.description && (
                           <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{goal.description}</p>
                         )}
@@ -476,6 +524,86 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
           })}
         </div>
       )}
+      {filteredExpired.length > 0 && (
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center gap-2 px-1">
+            <span className="w-2 h-2 rounded-full bg-red-500" />
+            <h2 className="text-sm font-semibold text-red-600 dark:text-red-400">
+              Caducadas
+            </h2>
+          </div>
+
+          {filteredExpired.map((goal) => {
+            const config = categoryConfig[goal.category] || categoryConfig.academic
+            const CategoryIcon = config.icon
+            const progress = Math.min(100, Math.round((goal.current_value / goal.target_value) * 100))
+
+            return (
+              <div key={`expired-${goal.id}`}
+                className="rounded-2xl border border-red-200/60 bg-card p-5 shadow-sm dark:border-red-900">
+                <div className="flex items-start gap-4">
+                  <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                    <CategoryIcon className={`w-5 h-5 ${config.color}`} />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="font-semibold text-foreground">{goal.title}</h3>
+                        {goal.description && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{goal.description}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${config.bg} ${config.color}`}>
+                          {config.label}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="w-full mt-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {goal.current_value} / {goal.target_value} {goal.unit}
+                        </span>
+                        <span className={`text-xs font-bold ${config.color}`}>
+                          {progress}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
+                        <div className={`h-2 rounded-full transition-all duration-500 ${config.progressColor}`}
+                          style={{ width: `${progress}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 mt-3">
+                      {goal.due_date && (
+                        <span className="flex items-center gap-1 text-[11px] text-red-500 dark:text-red-400 font-medium">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(goal.due_date).toLocaleDateString('es-ES', {
+                            day: 'numeric', month: 'short', year: 'numeric'
+                          })}
+                        </span>
+                      )}
+                      {goal.streak && goal.streak > 0 ? (
+                        <span className="flex items-center gap-1 text-[11px] text-orange-500 font-semibold">
+                          <Flame className="w-3 h-3" />{goal.streak} dÃ­as
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
+
+
+
+
+
+

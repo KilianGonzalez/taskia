@@ -5,6 +5,10 @@ import { createBrowserClient } from "@supabase/ssr";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+type ProfilePreferences = Record<string, unknown> & {
+  avatar_url?: string | null;
+};
+
 type ProfileFormProps = {
   user: { id: string; email?: string | null };
   profile: {
@@ -12,9 +16,13 @@ type ProfileFormProps = {
     display_name?: string | null;
     timezone?: string | null;
     onboarding_completed?: boolean | null;
-    preferences?: any | null;
+    preferences?: ProfilePreferences | null;
   } | null;
 };
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Error desconocido";
+}
 
 export default function ProfileForm({ user, profile }: ProfileFormProps) {
   const supabase = createBrowserClient(
@@ -80,8 +88,8 @@ export default function ProfileForm({ user, profile }: ProfileFormProps) {
         .getPublicUrl(filePath);
 
       setAvatarUrl(data.publicUrl);
-    } catch (error: any) {
-      alert("Error al subir la imagen: " + error.message);
+    } catch (error: unknown) {
+      alert("Error al subir la imagen: " + getErrorMessage(error));
     } finally {
       setUploading(false);
     }
@@ -91,6 +99,7 @@ export default function ProfileForm({ user, profile }: ProfileFormProps) {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         {avatarUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={avatarUrl}
             alt="Avatar"

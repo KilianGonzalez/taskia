@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
@@ -44,10 +44,42 @@ function groupTasksByDate(tasks: Task[]) {
   return groups
 }
 
+function getTodayDateInputValue() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function isTaskOverdue(task: Task) {
+  if (task.completed || !task.due_date) {
+    return false
+  }
+
+  const dueDateRaw = task.due_date.trim()
+  const dateOnlyMatch = dueDateRaw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch
+    const dueDate = new Date(Number(year), Number(month) - 1, Number(day), 0, 0, 0, 0)
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    return dueDate < todayStart
+  }
+
+  const parsedDueDate = new Date(dueDateRaw)
+  if (Number.isNaN(parsedDueDate.getTime())) {
+    return false
+  }
+
+  return parsedDueDate.getTime() < Date.now()
+}
+
 // ── Modal Nueva Tarea ──────────────────────────────────
 function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const minDueDate = getTodayDateInputValue()
   const [form, setForm] = useState({
     title: '', category: '', priority: 'media',
     due_date: '', estimated_duration: '', difficulty: '2', notes: '',
@@ -56,6 +88,10 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title.trim()) { setError('El título es obligatorio'); return }
+    if (form.due_date && form.due_date < minDueDate) {
+      setError('La fecha de entrega no puede ser anterior a hoy')
+      return
+    }
     setLoading(true)
     const res = await createTask({
       title: form.title.trim(),
@@ -78,9 +114,9 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+      <div className="app-modal relative w-full max-w-md space-y-5 p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#0f172a] dark:text-white">Nueva tarea</h2>
+          <h2 className="text-lg font-bold text-foreground">Nueva tarea</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -116,6 +152,7 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
             <label className={labelClass}>Fecha de entrega</label>
             <input type="date" value={form.due_date}
               onChange={e => setForm({ ...form, due_date: e.target.value })}
+              min={minDueDate}
               className={inputClass} />
           </div>
 
@@ -156,8 +193,7 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               Cancelar
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-60"
-              style={{ background: 'linear-gradient(90deg, #1e2d5e, #2d4a8a)' }}>
+              className="brand-gradient flex-1 rounded-xl py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               {loading ? 'Guardando...' : 'Crear tarea'}
             </button>
@@ -174,7 +210,7 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [search, setSearch] = useState('')
   const [priorityFilter, setPriorityFilter] = useState<string>('todas')
-  const [activeTab, setActiveTab] = useState<'todas' | 'pendientes' | 'completadas'>('todas')
+  const [activeTab, setActiveTab] = useState<'todas' | 'pendientes' | 'completadas' | 'caducadas'>('todas')
   const [showModal, setShowModal] = useState(false)
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -185,22 +221,37 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
     setTasks(initialTasks)
   }, [initialTasks])
 
+  const pending = useMemo(
+    () => tasks.filter((task) => !task.completed && !isTaskOverdue(task)),
+    [tasks]
+  )
+  const expired = useMemo(
+    () => tasks.filter((task) => !task.completed && isTaskOverdue(task)),
+    [tasks]
+  )
+  const completed = useMemo(() => tasks.filter((task) => task.completed), [tasks])
+  const totalWithoutExpired = tasks.length - expired.length
+
   const filtered = useMemo(() => {
-    return tasks.filter((t) => {
-      const matchSearch = t.title.toLowerCase().includes(search.toLowerCase()) ||
-        (t.category?.toLowerCase().includes(search.toLowerCase()) ?? false)
-      const matchPriority = priorityFilter === 'todas' || t.priority === priorityFilter
+    return tasks.filter((task) => {
+      const isExpiredTask = !task.completed && isTaskOverdue(task)
+      const matchSearch = task.title.toLowerCase().includes(search.toLowerCase()) ||
+        (task.category?.toLowerCase().includes(search.toLowerCase()) ?? false)
+      const matchPriority = priorityFilter === 'todas' || task.priority === priorityFilter
       const matchTab =
-        activeTab === 'todas' ? true :
-        activeTab === 'pendientes' ? !t.completed :
-        t.completed
+        activeTab === 'todas'
+          ? !isExpiredTask
+          : activeTab === 'pendientes'
+          ? !task.completed && !isExpiredTask
+          : activeTab === 'completadas'
+          ? task.completed
+          : !task.completed && isExpiredTask
+
       return matchSearch && matchPriority && matchTab
     })
   }, [tasks, search, priorityFilter, activeTab])
 
-  const pending   = tasks.filter(t => !t.completed)
-  const completed = tasks.filter(t => t.completed)
-  const grouped   = groupTasksByDate(filtered.filter(t => activeTab === 'completadas' ? t.completed : !t.completed))
+  const grouped = groupTasksByDate(filtered)
 
   const handleToggle = async (taskId: string, current: boolean) => {
     // Si la tarea ya está completada, descompletar directamente
@@ -265,7 +316,7 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-gray-950 p-6 space-y-6">
+    <div className="space-y-6">
 
       {showModal && (
         <NewTaskModal onClose={() => setShowModal(false)} onCreated={() => router.refresh()} />
@@ -284,14 +335,12 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#0f172a] dark:text-white">Mis Tareas</h1>
+          <h1 className="text-2xl font-bold text-foreground">Mis tareas</h1>
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">
             {pending.length} pendientes · {completed.length} completadas
           </p>
         </div>
-        <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-all"
-          style={{ background: 'linear-gradient(90deg, #1e2d5e, #2d4a8a)' }}>
+        <button onClick={() => setShowModal(true)} className="app-button-gradient flex items-center gap-2">
           <Plus className="w-4 h-4" />
           Nueva tarea
         </button>
@@ -303,16 +352,16 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input type="text" placeholder="Buscar tareas o categorías..." value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all shadow-sm" />
+            className="app-input pl-10 pr-4" />
         </div>
         <div className="relative">
           <button onClick={() => setShowPriorityMenu(!showPriorityMenu)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-600 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+            className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground shadow-sm transition-all hover:bg-muted/60 hover:text-foreground">
             <Filter className="w-4 h-4" />
             {priorityLabels[priorityFilter]}
           </button>
           {showPriorityMenu && (
-            <div className="absolute right-0 top-11 z-10 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl shadow-lg py-1 w-48">
+            <div className="absolute right-0 top-11 z-10 w-48 rounded-xl border border-border bg-card py-1 shadow-lg">
               {Object.entries(priorityLabels).map(([key, label]) => (
                 <button key={key}
                   onClick={() => { setPriorityFilter(key); setShowPriorityMenu(false) }}
@@ -330,11 +379,12 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl p-1 w-fit shadow-sm">
+      <div className="app-card flex w-fit items-center gap-1 p-1">
         {([
-          { key: 'todas',       label: 'Todas',       count: tasks.length },
+          { key: 'todas',       label: 'Total',       count: totalWithoutExpired },
           { key: 'pendientes',  label: 'Pendientes',  count: pending.length },
           { key: 'completadas', label: 'Completadas', count: completed.length },
+          { key: 'caducadas',   label: 'Caducadas',   count: expired.length },
         ] as const).map((tab) => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
@@ -359,23 +409,47 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
         <div className="text-center py-16 text-gray-400 dark:text-gray-600">
           <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">
-            {search ? 'No hay tareas que coincidan con la búsqueda' : '¡No tienes tareas pendientes!'}
+            {search
+              ? 'No hay tareas que coincidan con la búsqueda'
+              : activeTab === 'caducadas'
+              ? 'No tienes tareas caducadas'
+              : '¡No tienes tareas pendientes!'}
           </p>
-          {!search && <p className="text-sm mt-1">Crea una nueva tarea para empezar</p>}
+          {!search && activeTab !== 'caducadas' && (
+            <p className="text-sm mt-1">Crea una nueva tarea para empezar</p>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
           {Object.entries(grouped).map(([date, dateTasks]) => {
+            const isExpiredTab = activeTab === 'caducadas'
             const completedInGroup = dateTasks.filter(t => t.completed).length
             return (
-              <div key={date} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+              <div
+                key={date}
+                className={`overflow-hidden ${
+                  isExpiredTab
+                    ? 'rounded-2xl border border-red-200/60 bg-card shadow-sm dark:border-red-900'
+                    : 'app-card'
+                }`}
+              >
 
                 {/* Cabecera grupo */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-gray-50 dark:border-gray-800">
+                <div
+                  className={`flex items-center justify-between px-5 py-3 border-b ${
+                    isExpiredTab
+                      ? 'border-red-50 dark:border-red-900'
+                      : 'border-gray-50 dark:border-gray-800'
+                  }`}
+                >
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                    <span className="text-sm font-semibold text-[#0f172a] dark:text-white capitalize">{date}</span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">{completedInGroup}/{dateTasks.length} completadas</span>
+                    <span className={`w-2 h-2 rounded-full ${isExpiredTab ? 'bg-red-500' : 'bg-indigo-500'}`} />
+                    <span className="text-sm font-semibold capitalize text-foreground">{date}</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      {isExpiredTab
+                        ? `${dateTasks.length} caducadas`
+                        : `${completedInGroup}/${dateTasks.length} completadas`}
+                    </span>
                   </div>
                 </div>
 
@@ -387,7 +461,11 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
                     return (
                       <div 
                         key={task.id}
-                        className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group cursor-pointer"
+                        className={`flex items-center gap-4 px-5 py-3.5 transition-colors group cursor-pointer ${
+                          isExpiredTab
+                            ? 'bg-red-50/20 dark:bg-red-950/10 hover:bg-red-50/40 dark:hover:bg-red-950/20'
+                            : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/50'
+                        }`}
                         onClick={() => {
                           if (!task.completed) {
                             setCompletingTask(task)
@@ -410,7 +488,7 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
                           }
                         </button>
 
-                        <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${isExpiredTab ? 'bg-red-500' : 'bg-indigo-500'}`} />
 
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-medium truncate ${
@@ -427,7 +505,13 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
                               </span>
                             )}
                             {task.due_date && (
-                              <span className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500">
+                              <span
+                                className={`flex items-center gap-1 text-[11px] ${
+                                  isExpiredTab
+                                    ? 'font-medium text-red-500 dark:text-red-400'
+                                    : 'text-gray-400 dark:text-gray-500'
+                                }`}
+                              >
                                 <Clock className="w-3 h-3" />
                                 {new Date(task.due_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                               </span>
@@ -473,8 +557,11 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
               </div>
             )
           })}
+
         </div>
       )}
     </div>
   )
 }
+
+

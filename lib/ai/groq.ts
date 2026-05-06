@@ -15,6 +15,19 @@ export const groq = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
 });
 
+function getErrorStatus(error: unknown) {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof error.status === 'number'
+  ) {
+    return error.status;
+  }
+
+  return null;
+}
+
 export async function countInputTokens(contents: string) {
   // Groq doesn't provide token counting API, so we'll estimate
   // Rough estimation: 1 token ≈ 4 characters for English/Spanish
@@ -50,15 +63,15 @@ export async function generateJson(contents: string) {
         total_tokens: response.usage?.total_tokens ?? null,
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Groq API error:', error);
     
     // Handle specific error cases
-    if (error.status === 429) {
+    if (getErrorStatus(error) === 429) {
       throw new Error('Límite de cuota excedido. Por favor, intenta más tarde.');
     }
     
-    if (error.status === 401) {
+    if (getErrorStatus(error) === 401) {
       throw new Error('Error de autenticación con el servicio de IA.');
     }
     

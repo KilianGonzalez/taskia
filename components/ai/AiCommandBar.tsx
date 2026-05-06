@@ -31,14 +31,14 @@ export function AiCommandBar({
   }
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="app-card-strong p-4">
       <div className="mb-3 flex items-center gap-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4EC4A9] to-[#20589A]">
           <Sparkles className="h-4 w-4 text-white" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-[#1D2155]">Asistente IA</p>
-          <p className="text-xs text-slate-500">Pide cambios en lenguaje natural</p>
+          <p className="text-sm font-semibold text-foreground">Asistente IA</p>
+          <p className="text-xs text-muted-foreground">Pide cambios en lenguaje natural</p>
         </div>
       </div>
 
@@ -49,7 +49,7 @@ export function AiCommandBar({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder}
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#4EC4A9]/20 focus:border-[#4EC4A9]"
+            className="app-input rounded-2xl px-4 py-3"
           />
 
           <button
@@ -68,7 +68,7 @@ export function AiCommandBar({
               key={suggestion}
               type="button"
               onClick={() => setValue(suggestion)}
-              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-[#20589A]/20 hover:text-[#1D2155]"
+            className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
             >
               {suggestion}
             </button>
