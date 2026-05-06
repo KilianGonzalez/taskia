@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -386,15 +386,15 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
   }
 
   return (
-    <div className="min-h-full bg-[#f8fafc] p-6 space-y-6">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#0f172a]">Mis Tareas</h1>
+        <h1 className="text-2xl font-bold text-foreground">Mis Tareas</h1>
         <p className="text-sm text-gray-400 mt-0.5">
           Gestiona tus tareas flexibles y deja que la IA te ayude a priorizarlas
         </p>
       </div>
 
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
+      <div className="app-card p-4">
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_0.9fr_1.35fr] gap-4 xl:items-center">
           <div className="flex items-start gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center shrink-0">
@@ -402,7 +402,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
             </div>
 
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#0f172a]">Asistente IA</p>
+              <p className="text-sm font-semibold text-foreground">Asistente IA</p>
               <p className="text-xs text-gray-400 mb-2">
                 Comandos rapidos para organizar tus tareas
               </p>
@@ -419,7 +419,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
               type="button"
               onClick={handleSplitTasks}
               disabled={aiLoading}
-              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               {aiLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -433,7 +433,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
               type="button"
               onClick={handlePrioritizeTasks}
               disabled={aiLoading}
-              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               {aiLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -447,7 +447,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
               type="button"
               onClick={() => void handleScheduleTasks()}
               disabled={aiLoading}
-              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               {aiLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -476,8 +476,8 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                 type="button"
                 onClick={() => void handleCommandAction()}
                 disabled={aiLoading || !command.trim()}
-                className="h-12 px-6 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all shrink-0 disabled:opacity-50"
-                style={{ background: "linear-gradient(90deg, #1e2d5e, #2d4a8a)" }}
+                className="app-button-gradient h-12 shrink-0 px-6"
+                
               >
                 Probar
               </button>
@@ -500,28 +500,28 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
       ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="app-card p-4">
           <div className="flex items-center gap-2 text-[#1e2d5e]">
             <Circle className="w-4 h-4" />
             <span className="text-sm font-medium">Pendientes</span>
           </div>
-          <p className="mt-2 text-2xl font-bold text-[#0f172a]">{pendingTasks.length}</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{pendingTasks.length}</p>
         </div>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="app-card p-4">
           <div className="flex items-center gap-2 text-rose-500">
             <ArrowUpCircle className="w-4 h-4" />
             <span className="text-sm font-medium">Alta prioridad</span>
           </div>
-          <p className="mt-2 text-2xl font-bold text-[#0f172a]">{highPriorityTasks.length}</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{highPriorityTasks.length}</p>
         </div>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="app-card p-4">
           <div className="flex items-center gap-2 text-emerald-500">
             <CheckCircle2 className="w-4 h-4" />
             <span className="text-sm font-medium">Completadas</span>
           </div>
-          <p className="mt-2 text-2xl font-bold text-[#0f172a]">{completedTasks.length}</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{completedTasks.length}</p>
         </div>
       </div>
 
@@ -535,10 +535,10 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setPrioritizeModalOpen(false)}
           />
-          <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
+          <div className="app-modal relative w-full max-w-2xl space-y-5 p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-[#0f172a]">
+                <h3 className="text-lg font-bold text-foreground">
                   Ajustar prioridad de tareas
                 </h3>
                 <p className="text-sm text-gray-400 mt-0.5">
@@ -562,7 +562,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                 return (
                   <div
                     key={task.id}
-                    className="w-full rounded-2xl border border-gray-200 bg-[#f8fafc] p-4 hover:bg-white hover:border-indigo-300 transition-all"
+                    className="w-full rounded-2xl border border-border bg-muted/30 p-4 transition-all hover:border-primary/40 hover:bg-card"
                   >
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div className="min-w-0 flex-1">
@@ -642,10 +642,10 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setSplitModalOpen(false)}
           />
-          <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
+          <div className="app-modal relative w-full max-w-2xl space-y-5 p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-[#0f172a]">Dividir tarea</h3>
+                <h3 className="text-lg font-bold text-foreground">Dividir tarea</h3>
                 <p className="text-sm text-gray-400 mt-0.5">
                   Elige una tarea para que la IA la divida en sesiones mas pequenas
                 </p>
@@ -667,7 +667,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                 return (
                   <div
                     key={task.id}
-                    className="w-full rounded-2xl border border-gray-200 bg-[#f8fafc] p-4 hover:bg-white hover:border-purple-300 transition-all cursor-pointer"
+                    className="w-full cursor-pointer rounded-2xl border border-border bg-muted/30 p-4 transition-all hover:border-primary/40 hover:bg-card"
                     onClick={() => void handleSelectTaskToSplit(task.id)}
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -726,10 +726,10 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setSplitPlanOpen(false)}
           />
-          <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
+          <div className="app-modal relative w-full max-w-2xl space-y-5 p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-[#0f172a]">Tarea dividida</h3>
+                <h3 className="text-lg font-bold text-foreground">Tarea dividida</h3>
                 <p className="text-sm text-gray-400 mt-0.5">{selectedSplitTask?.title}</p>
               </div>
 
@@ -751,11 +751,11 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
               {suggestedSplit.sessions.map((session, index) => (
                 <div
                   key={`${session.title}-${index}`}
-                  className="rounded-2xl border border-gray-100 bg-[#f8fafc] p-4"
+                  className="rounded-2xl border border-border bg-muted/35 p-4"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[#0f172a]">
+                      <p className="text-sm font-semibold text-foreground">
                         {session.title}
                       </p>
                       <p className="text-xs text-gray-400 mt-1">{session.focus}</p>
@@ -766,7 +766,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                       )}
                     </div>
 
-                    <span className="shrink-0 rounded-full bg-white border border-gray-200 px-2.5 py-1 text-xs font-semibold text-gray-600">
+                    <span className="shrink-0 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">
                       {session.durationMin} min
                     </span>
                   </div>
@@ -789,8 +789,8 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                 type="button"
                 onClick={handleSaveSplitTasks}
                 disabled={savingSplitTasks}
-                className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center gap-2"
-                style={{ background: "linear-gradient(90deg, #8b5cf6, #7c3aed)" }}
+                className="brand-gradient px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:brightness-110 disabled:opacity-60 flex items-center gap-2"
+                
               >
                 {savingSplitTasks ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {savingSplitTasks ? "Guardando..." : "Crear tareas"}
@@ -802,3 +802,4 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
     </div>
   );
 }
+

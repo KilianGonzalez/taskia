@@ -11,9 +11,9 @@ type AiPlannerPanelProps = {
 }
 
 const severityStyles = {
-  low: 'border-slate-200 bg-slate-50 text-slate-700',
-  medium: 'border-amber-200 bg-amber-50 text-amber-800',
-  high: 'border-red-200 bg-red-50 text-red-700',
+  low: 'border-border bg-muted/50 text-foreground',
+  medium: 'border-amber-200/70 bg-amber-50/80 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300',
+  high: 'border-red-200/70 bg-red-50/80 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300',
 }
 
 export function AiPlannerPanel({
@@ -23,15 +23,15 @@ export function AiPlannerPanel({
 }: AiPlannerPanelProps) {
   return (
     <aside className="space-y-4">
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="app-card p-5">
         <div className="mb-4 flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-amber-500" />
-          <h4 className="text-sm font-semibold text-[#1D2155]">Conflictos detectados</h4>
+          <h4 className="text-sm font-semibold text-foreground">Conflictos detectados</h4>
         </div>
 
         <div className="space-y-3">
           {conflicts.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+            <div className="rounded-2xl border border-border bg-muted/60 p-4 text-sm text-muted-foreground">
               No hay conflictos importantes ahora mismo.
             </div>
           ) : (
@@ -48,15 +48,15 @@ export function AiPlannerPanel({
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="app-card p-5">
         <div className="mb-4 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-[#4EC4A9]" />
-          <h4 className="text-sm font-semibold text-[#1D2155]">Sugerencias IA</h4>
+          <h4 className="text-sm font-semibold text-foreground">Sugerencias IA</h4>
         </div>
 
         <div className="space-y-3">
           {suggestions.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+            <div className="rounded-2xl border border-border bg-muted/60 p-4 text-sm text-muted-foreground">
               Aun no hay sugerencias nuevas.
             </div>
           ) : (

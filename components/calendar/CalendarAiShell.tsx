@@ -973,16 +973,16 @@ export function CalendarAiShell({
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] p-4 gap-4">
+    <div className="flex h-[calc(100vh-4rem)] flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#0f172a]">Mi Calendario</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h1 className="text-2xl font-bold text-foreground">Mi calendario</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
             Visualiza, gestiona y ajusta tu semana con ayuda de la IA
           </p>
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-gray-500">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block" />
             TaskIA
@@ -1008,8 +1008,8 @@ export function CalendarAiShell({
         <div
           className={`rounded-2xl border px-4 py-3 text-sm ${
             feedback.tone === 'error'
-              ? 'border-red-100 bg-red-50 text-red-600'
-              : 'border-emerald-100 bg-emerald-50 text-emerald-700'
+              ? 'border-red-200/70 bg-red-50/70 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300'
+              : 'border-emerald-200/70 bg-emerald-50/70 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300'
           }`}
         >
           {feedback.message}
@@ -1017,7 +1017,7 @@ export function CalendarAiShell({
       ) : null}
 
       <div className="grid flex-1 min-h-0 gap-4 xl:grid-cols-[1fr_360px]">
-        <div className="min-h-0 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="app-card min-h-0 overflow-hidden">
           <CalendarView
             initialEvents={initialEvents}
             flexibleTasks={calendarTasks}

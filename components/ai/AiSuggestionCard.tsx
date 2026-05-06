@@ -9,9 +9,9 @@ type AiSuggestionCardProps = {
 }
 
 const impactStyles = {
-  low: 'bg-slate-100 text-slate-600',
-  medium: 'bg-amber-50 text-amber-700',
-  high: 'bg-red-50 text-red-600',
+  low: 'bg-muted text-muted-foreground',
+  medium: 'bg-amber-50 text-amber-700 dark:bg-amber-950/35 dark:text-amber-300',
+  high: 'bg-red-50 text-red-600 dark:bg-red-950/35 dark:text-red-300',
 }
 
 const typeIconMap = {
@@ -28,18 +28,18 @@ export function AiSuggestionCard({
   const Icon = typeIconMap[suggestion.type]
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="app-card p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#4EC4A9]/10">
-            <Icon className="h-5 w-5 text-[#1D2155]" />
+            <Icon className="h-5 w-5 text-primary" />
           </div>
 
           <div>
-            <h4 className="text-sm font-semibold text-[#1D2155]">
+            <h4 className="text-sm font-semibold text-foreground">
               {suggestion.title}
             </h4>
-            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
               {suggestion.reason}
             </p>
           </div>
@@ -60,7 +60,7 @@ export function AiSuggestionCard({
         <button
           type="button"
           onClick={() => onAccept(suggestion)}
-          className="inline-flex items-center gap-2 text-sm font-medium text-[#20589A] transition-colors hover:text-[#1D2155]"
+          className="inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-foreground"
         >
           {suggestion.ctaLabel ?? 'Aplicar sugerencia'}
           <ArrowRight className="h-4 w-4" />
