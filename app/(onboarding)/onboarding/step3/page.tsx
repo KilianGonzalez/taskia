@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -22,7 +22,7 @@ const STEP3_KEY = 'taskia_onboarding_step3'
 const steps = [
   { label: 'Tu semana', sub: 'Configura tu horario', icon: Clock },
   { label: 'Compromisos fijos', sub: 'Clases y actividades', icon: Calendar },
-  { label: 'Objetivos', sub: 'Exámenes y entregas', icon: Target },
+  { label: 'Objetivos', sub: 'ExÃ¡menes y entregas', icon: Target },
 ]
 
 type Objetivo = {
@@ -217,7 +217,7 @@ function AddObjetivoForm({
 
       <div>
         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
-          Título
+          TÃ­tulo
         </p>
         <input
           type="text"
@@ -289,7 +289,7 @@ function AddObjetivoForm({
           className="py-2 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-40"
           style={{ background: 'linear-gradient(90deg, #14b8a6, #0f766e)' }}
         >
-          Añadir
+          AÃ±adir
         </button>
       </div>
     </div>
@@ -585,9 +585,9 @@ export default function OnboardingStep3() {
         const goalsPayload = objetivos.map((o) => ({
           user_id: user.id,
           title: o.titulo,
-          description: `${o.tipo === 'examen' ? 'Examen' : 'Entrega'} · ${
+          description: `${o.tipo === 'examen' ? 'Examen' : 'Entrega'} Â· ${
             o.materia
-          } · Prioridad ${o.prioridad}`,
+          } Â· Prioridad ${o.prioridad}`,
           category: 'academic',
           current_value: 0,
           target_value: 1,
@@ -621,27 +621,27 @@ export default function OnboardingStep3() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-start bg-gradient-to-br from-slate-50 via-teal-50/30 to-blue-50/20 px-6 py-10">
+    <div className="flex min-h-screen flex-col items-center justify-start bg-gradient-to-br from-slate-50 via-teal-50/30 to-blue-50/20 px-6 py-10 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="mb-6 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 shadow-md">
           <span className="text-lg font-black text-white">T</span>
         </div>
-        <span className="text-xl font-bold text-gray-800">TaskIA</span>
+        <span className="text-xl font-bold text-foreground">TaskIA</span>
       </div>
 
-      <p className="mb-6 text-sm text-gray-400">
+      <p className="mb-6 text-sm text-muted-foreground">
         Vamos a configurar tu planificador en 3 pasos
       </p>
 
       <Stepper current={2} />
 
-      <div className="w-full max-w-lg space-y-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div className="w-full max-w-lg space-y-4 app-card-strong p-6">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">
-            Tus objetivos próximos
+          <h2 className="text-xl font-bold text-foreground">
+            Tus objetivos prÃ³ximos
           </h2>
-          <p className="mt-1 text-sm text-gray-400">
-            Añade exámenes y entregas importantes para que TaskIA te ayude a
+          <p className="mt-1 text-sm text-muted-foreground">
+            AÃ±ade exÃ¡menes y entregas importantes para que TaskIA te ayude a
             planificar
           </p>
         </div>
@@ -651,7 +651,7 @@ export default function OnboardingStep3() {
             {objetivos.map((o) => (
               <div
                 key={o.id}
-                className="group flex items-center justify-between rounded-2xl border border-teal-100 bg-teal-50 px-4 py-2.5"
+                className="group flex items-center justify-between rounded-2xl border border-teal-200/70 bg-teal-50/80 px-4 py-2.5 dark:border-teal-900 dark:bg-teal-950/35"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100">
@@ -663,13 +663,13 @@ export default function OnboardingStep3() {
                   </div>
 
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">
+                    <p className="text-sm font-semibold text-foreground">
                       {o.titulo}
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-muted-foreground">
                       {o.materia}
                       {o.fecha &&
-                        ` · ${new Date(o.fecha).toLocaleDateString('es-ES', {
+                        ` Â· ${new Date(o.fecha).toLocaleDateString('es-ES', {
                           day: 'numeric',
                           month: 'short',
                         })}`}
@@ -709,22 +709,22 @@ export default function OnboardingStep3() {
           <button
             type="button"
             onClick={() => setShowForm(true)}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-gray-200 px-4 py-2.5 text-sm font-medium text-teal-500 transition-all hover:border-teal-200 hover:bg-teal-50"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border px-4 py-2.5 text-sm font-medium text-primary transition-all hover:bg-muted/60"
           >
             <Plus className="h-4 w-4" />
-            Añadir objetivo
+            AÃ±adir objetivo
           </button>
         )}
 
-        <div className="flex items-start gap-3 rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3">
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-200/70 bg-amber-50/80 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/30">
           <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
           <div>
             <p className="text-sm font-semibold text-orange-700">
-              La IA te ayudará
+              La IA te ayudarÃ¡
             </p>
             <p className="mt-0.5 text-xs text-orange-500">
-              TaskIA usará estos objetivos para sugerirte sesiones de estudio y
-              optimizar tu planificación automáticamente.
+              TaskIA usarÃ¡ estos objetivos para sugerirte sesiones de estudio y
+              optimizar tu planificaciÃ³n automÃ¡ticamente.
             </p>
           </div>
         </div>
@@ -734,9 +734,9 @@ export default function OnboardingStep3() {
             type="button"
             onClick={handleFinish}
             disabled={saving}
-            className="rounded-2xl border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-500 transition-all hover:bg-gray-50 disabled:opacity-60"
+            className="rounded-2xl border border-border px-5 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 disabled:opacity-60"
           >
-            Configurar después
+            Configurar despuÃ©s
           </button>
 
           <button
@@ -754,7 +754,8 @@ export default function OnboardingStep3() {
         </div>
       </div>
 
-      <p className="my-6 text-xs text-gray-300">Paso 3 de 3</p>
+      <p className="my-6 text-xs text-muted-foreground">Paso 3 de 3</p>
     </div>
   )
 }
+

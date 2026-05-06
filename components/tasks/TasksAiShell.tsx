@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -66,9 +66,9 @@ type SuggestedSplitPlan = {
 };
 
 const taskPriorityColors: Record<TaskPriorityLabel, string> = {
-  baja: "bg-gray-100 text-gray-600 border-gray-300",
-  media: "bg-blue-100 text-blue-600 border-blue-300",
-  alta: "bg-red-100 text-red-600 border-red-300",
+  baja: "border-gray-300 bg-gray-100 text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200",
+  media: "border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
+  alta: "border-red-300 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300",
 };
 
 const taskPriorityLabels: Record<TaskPriorityLabel, string> = {
@@ -187,9 +187,9 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
   }, [highPriorityTasks.length, longTasks.length, pendingTasks.length]);
 
   const toneStyles = {
-    info: "bg-sky-50 border-sky-100 text-sky-700",
-    focus: "bg-amber-50 border-amber-100 text-amber-700",
-    urgent: "bg-rose-50 border-rose-100 text-rose-700",
+    info: "border-sky-100 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-300",
+    focus: "border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300",
+    urgent: "border-rose-100 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300",
   };
 
   function showSuccess(message: string) {
@@ -386,15 +386,15 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
   }
 
   return (
-    <div className="min-h-full bg-[#f8fafc] p-6 space-y-6">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#0f172a]">Mis Tareas</h1>
-        <p className="text-sm text-gray-400 mt-0.5">
+        <h1 className="text-2xl font-bold text-foreground">Mis Tareas</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">
           Gestiona tus tareas flexibles y deja que la IA te ayude a priorizarlas
         </p>
       </div>
 
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
+      <div className="app-card p-4">
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_0.9fr_1.35fr] gap-4 xl:items-center">
           <div className="flex items-start gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center shrink-0">
@@ -402,8 +402,8 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
             </div>
 
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#0f172a]">Asistente IA</p>
-              <p className="text-xs text-gray-400 mb-2">
+              <p className="text-sm font-semibold text-foreground">Asistente IA</p>
+              <p className="mb-2 text-xs text-muted-foreground">
                 Comandos rapidos para organizar tus tareas
               </p>
 
@@ -419,7 +419,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
               type="button"
               onClick={handleSplitTasks}
               disabled={aiLoading}
-              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               {aiLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -433,7 +433,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
               type="button"
               onClick={handlePrioritizeTasks}
               disabled={aiLoading}
-              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               {aiLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -447,7 +447,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
               type="button"
               onClick={() => void handleScheduleTasks()}
               disabled={aiLoading}
-              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               {aiLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -470,14 +470,14 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                   }
                 }}
                 placeholder='Ej. "Divide matematicas en 3 sesiones"'
-                className="flex-1 h-12 rounded-xl border border-gray-200 px-4 text-sm text-gray-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                className="app-input h-12 px-4"
               />
               <button
                 type="button"
                 onClick={() => void handleCommandAction()}
                 disabled={aiLoading || !command.trim()}
-                className="h-12 px-6 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all shrink-0 disabled:opacity-50"
-                style={{ background: "linear-gradient(90deg, #1e2d5e, #2d4a8a)" }}
+                className="app-button-gradient h-12 shrink-0 px-6"
+                
               >
                 Probar
               </button>
@@ -487,41 +487,41 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
       </div>
 
       {aiError ? (
-        <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 flex items-start gap-2 text-red-600">
+        <div className="flex items-start gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-red-600 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
           <p className="text-sm">{aiError}</p>
         </div>
       ) : null}
 
       {saveSuccess ? (
-        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-emerald-700">
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
           <p className="text-sm font-medium">{saveSuccess}</p>
         </div>
       ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-[#1e2d5e]">
+        <div className="app-card p-4">
+          <div className="flex items-center gap-2 text-primary">
             <Circle className="w-4 h-4" />
             <span className="text-sm font-medium">Pendientes</span>
           </div>
-          <p className="mt-2 text-2xl font-bold text-[#0f172a]">{pendingTasks.length}</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{pendingTasks.length}</p>
         </div>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="app-card p-4">
           <div className="flex items-center gap-2 text-rose-500">
             <ArrowUpCircle className="w-4 h-4" />
             <span className="text-sm font-medium">Alta prioridad</span>
           </div>
-          <p className="mt-2 text-2xl font-bold text-[#0f172a]">{highPriorityTasks.length}</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{highPriorityTasks.length}</p>
         </div>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="app-card p-4">
           <div className="flex items-center gap-2 text-emerald-500">
             <CheckCircle2 className="w-4 h-4" />
             <span className="text-sm font-medium">Completadas</span>
           </div>
-          <p className="mt-2 text-2xl font-bold text-[#0f172a]">{completedTasks.length}</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{completedTasks.length}</p>
         </div>
       </div>
 
@@ -535,13 +535,13 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setPrioritizeModalOpen(false)}
           />
-          <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
+          <div className="app-modal relative w-full max-w-2xl space-y-5 p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-[#0f172a]">
+                <h3 className="text-lg font-bold text-foreground">
                   Ajustar prioridad de tareas
                 </h3>
-                <p className="text-sm text-gray-400 mt-0.5">
+                <p className="mt-0.5 text-sm text-muted-foreground">
                   Elige una tarea y ajusta su prioridad
                 </p>
               </div>
@@ -549,7 +549,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
               <button
                 type="button"
                 onClick={() => setPrioritizeModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -562,11 +562,11 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                 return (
                   <div
                     key={task.id}
-                    className="w-full rounded-2xl border border-gray-200 bg-[#f8fafc] p-4 hover:bg-white hover:border-indigo-300 transition-all"
+                    className="w-full rounded-2xl border border-border bg-muted/30 p-4 transition-all hover:border-primary/40 hover:bg-card"
                   >
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-[#0f172a] truncate">
+                        <p className="truncate text-sm font-semibold text-foreground">
                           {task.title}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
@@ -576,12 +576,12 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                             {taskPriorityLabels[currentPriority]}
                           </span>
                           {task.estimated_duration_min && (
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-muted-foreground">
                               {task.estimated_duration_min} min
                             </span>
                           )}
                           {task.due_date && (
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-muted-foreground">
                               {new Date(task.due_date).toLocaleDateString()}
                             </span>
                           )}
@@ -627,7 +627,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
 
             {pendingTasks.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   No tienes tareas pendientes para priorizar
                 </p>
               </div>
@@ -642,11 +642,11 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setSplitModalOpen(false)}
           />
-          <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
+          <div className="app-modal relative w-full max-w-2xl space-y-5 p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-[#0f172a]">Dividir tarea</h3>
-                <p className="text-sm text-gray-400 mt-0.5">
+                <h3 className="text-lg font-bold text-foreground">Dividir tarea</h3>
+                <p className="mt-0.5 text-sm text-muted-foreground">
                   Elige una tarea para que la IA la divida en sesiones mas pequenas
                 </p>
               </div>
@@ -654,7 +654,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
               <button
                 type="button"
                 onClick={() => setSplitModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -667,12 +667,12 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                 return (
                   <div
                     key={task.id}
-                    className="w-full rounded-2xl border border-gray-200 bg-[#f8fafc] p-4 hover:bg-white hover:border-purple-300 transition-all cursor-pointer"
+                    className="w-full cursor-pointer rounded-2xl border border-border bg-muted/30 p-4 transition-all hover:border-primary/40 hover:bg-card"
                     onClick={() => void handleSelectTaskToSplit(task.id)}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-[#0f172a] truncate">
+                        <p className="truncate text-sm font-semibold text-foreground">
                           {task.title}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
@@ -682,18 +682,18 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                             {taskPriorityLabels[currentPriority]}
                           </span>
                           {task.estimated_duration_min && (
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-muted-foreground">
                               {task.estimated_duration_min} min
                             </span>
                           )}
                           {task.due_date && (
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-muted-foreground">
                               {new Date(task.due_date).toLocaleDateString()}
                             </span>
                           )}
                         </div>
                         {task.notes && (
-                          <p className="text-xs text-gray-500 mt-2 line-clamp-2">
+                          <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
                             {task.notes}
                           </p>
                         )}
@@ -711,7 +711,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
 
             {pendingTasks.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   No tienes tareas pendientes para dividir
                 </p>
               </div>
@@ -726,17 +726,17 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setSplitPlanOpen(false)}
           />
-          <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
+          <div className="app-modal relative w-full max-w-2xl space-y-5 p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-[#0f172a]">Tarea dividida</h3>
-                <p className="text-sm text-gray-400 mt-0.5">{selectedSplitTask?.title}</p>
+                <h3 className="text-lg font-bold text-foreground">Tarea dividida</h3>
+                <p className="mt-0.5 text-sm text-muted-foreground">{selectedSplitTask?.title}</p>
               </div>
 
               <button
                 type="button"
                 onClick={() => setSplitPlanOpen(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -751,14 +751,14 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
               {suggestedSplit.sessions.map((session, index) => (
                 <div
                   key={`${session.title}-${index}`}
-                  className="rounded-2xl border border-gray-100 bg-[#f8fafc] p-4"
+                  className="rounded-2xl border border-border bg-muted/35 p-4"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[#0f172a]">
+                      <p className="text-sm font-semibold text-foreground">
                         {session.title}
                       </p>
-                      <p className="text-xs text-gray-400 mt-1">{session.focus}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{session.focus}</p>
                       {session.suggestedTime && (
                         <p className="text-xs text-purple-600 mt-2">
                           Sugerido: {new Date(session.suggestedTime).toLocaleString()}
@@ -766,12 +766,12 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                       )}
                     </div>
 
-                    <span className="shrink-0 rounded-full bg-white border border-gray-200 px-2.5 py-1 text-xs font-semibold text-gray-600">
+                    <span className="shrink-0 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">
                       {session.durationMin} min
                     </span>
                   </div>
 
-                  <p className="text-sm text-gray-500 mt-3">{session.reason}</p>
+                  <p className="mt-3 text-sm text-muted-foreground">{session.reason}</p>
                 </div>
               ))}
             </div>
@@ -780,7 +780,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
               <button
                 type="button"
                 onClick={() => setSplitPlanOpen(false)}
-                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
               >
                 Cancelar
               </button>
@@ -789,8 +789,8 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                 type="button"
                 onClick={handleSaveSplitTasks}
                 disabled={savingSplitTasks}
-                className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center gap-2"
-                style={{ background: "linear-gradient(90deg, #8b5cf6, #7c3aed)" }}
+                className="brand-gradient px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:brightness-110 disabled:opacity-60 flex items-center gap-2"
+                
               >
                 {savingSplitTasks ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {savingSplitTasks ? "Guardando..." : "Crear tareas"}
@@ -802,3 +802,4 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
     </div>
   );
 }
+

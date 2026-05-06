@@ -119,9 +119,9 @@ function NewGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+      <div className="app-modal relative w-full max-w-md space-y-5 p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#0f172a] dark:text-white">Nuevo objetivo</h2>
+          <h2 className="text-lg font-bold text-foreground">Nuevo objetivo</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -224,8 +224,7 @@ function NewGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               Cancelar
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-60"
-              style={{ background: 'linear-gradient(90deg, #10b981, #059669)' }}>
+              className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 hover:brightness-110 transition-all disabled:opacity-60 bg-gradient-to-r from-emerald-500 to-emerald-700">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               {loading ? 'Guardando...' : 'Crear objetivo'}
             </button>
@@ -262,9 +261,9 @@ function UpdateProgressModal({ goal, onClose, onUpdated }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+      <div className="app-modal relative w-full max-w-sm space-y-5 p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#0f172a] dark:text-white">Actualizar progreso</h2>
+          <h2 className="text-lg font-bold text-foreground">Actualizar progreso</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <X className="w-5 h-5" />
           </button>
@@ -378,7 +377,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
   const tabIcons = [Target, BookOpen, Heart, Zap]
 
   return (
-    <div className="min-h-full bg-[#f8fafc] dark:bg-gray-950 p-6 space-y-6">
+    <div className="space-y-6">
 
       {showNewModal && (
         <NewGoalModal onClose={() => setShowNewModal(false)} onCreated={() => router.refresh()} />
@@ -391,14 +390,12 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#0f172a] dark:text-white">Mis Objetivos</h1>
+          <h1 className="text-2xl font-bold text-foreground">Mis objetivos</h1>
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">
             {activeGoals.length} activos · {completedGoals.length} completados
           </p>
         </div>
-        <button onClick={() => setShowNewModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-all"
-          style={{ background: 'linear-gradient(90deg, #10b981, #059669)' }}>
+        <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:brightness-110">
           <Plus className="w-4 h-4" />
           Nuevo objetivo
         </button>
@@ -413,12 +410,12 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
         ].map((metric) => {
           const Icon = metric.icon
           return (
-            <div key={metric.label} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 flex items-center gap-4">
+            <div key={metric.label} className="app-card flex items-center gap-4 p-4">
               <div className={`w-10 h-10 rounded-xl ${metric.bg} flex items-center justify-center shrink-0`}>
                 <Icon className={`w-5 h-5 ${metric.color}`} />
               </div>
               <div>
-                <p className="text-xl font-bold text-[#0f172a] dark:text-white">{metric.value}</p>
+                <p className="text-xl font-bold text-foreground">{metric.value}</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500">{metric.label}</p>
               </div>
             </div>
@@ -427,7 +424,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-1 w-fit shadow-sm">
+      <div className="app-card flex w-fit items-center gap-1 p-1">
         {tabs.map((tab, i) => {
           const Icon = tabIcons[i]
           return (
@@ -460,7 +457,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
 
             return (
               <div key={goal.id}
-                className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 hover:shadow-md transition-all group">
+                className="app-card group p-5 transition-all hover:shadow-md">
                 <div className="flex items-start gap-4">
                   <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center shrink-0 mt-0.5`}>
                     <CategoryIcon className={`w-5 h-5 ${config.color}`} />
@@ -469,7 +466,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h3 className="font-semibold text-[#0f172a] dark:text-white">{goal.title}</h3>
+                        <h3 className="font-semibold text-foreground">{goal.title}</h3>
                         {goal.description && (
                           <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{goal.description}</p>
                         )}
@@ -543,7 +540,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
 
             return (
               <div key={`expired-${goal.id}`}
-                className="bg-white dark:bg-gray-900 rounded-2xl border border-red-100 dark:border-red-900 shadow-sm p-5">
+                className="rounded-2xl border border-red-200/60 bg-card p-5 shadow-sm dark:border-red-900">
                 <div className="flex items-start gap-4">
                   <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center shrink-0 mt-0.5`}>
                     <CategoryIcon className={`w-5 h-5 ${config.color}`} />
@@ -552,7 +549,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h3 className="font-semibold text-[#0f172a] dark:text-white">{goal.title}</h3>
+                        <h3 className="font-semibold text-foreground">{goal.title}</h3>
                         {goal.description && (
                           <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{goal.description}</p>
                         )}

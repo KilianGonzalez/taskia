@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -145,25 +145,25 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
             return {
                 title: "Convierte objetivos en sesiones",
                 text: `Tienes ${academicGoals.length} objetivo${academicGoals.length === 1 ? "" : "s"
-                    } académico${academicGoals.length === 1 ? "" : "s"
+                    } acadÃ©mico${academicGoals.length === 1 ? "" : "s"
                     } activo${academicGoals.length === 1 ? "" : "s"} listo${academicGoals.length === 1 ? "" : "s"
                     } para planificar.`,
-                style: "bg-emerald-50 border-emerald-100 text-emerald-700",
+                style: "border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300",
             };
         }
 
         if (activeGoals.length > 0) {
             return {
-                title: "Mantén el seguimiento",
+                title: "MantÃ©n el seguimiento",
                 text: "Actualiza el progreso de tus objetivos para que la IA pueda priorizar mejor tu semana.",
-                style: "bg-sky-50 border-sky-100 text-sky-700",
+                style: "border-sky-100 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-300",
             };
         }
 
         return {
-            title: "Empieza por tu próximo hito",
+            title: "Empieza por tu prÃ³ximo hito",
             text: "Crea tu primer objetivo para que TaskIA pueda ayudarte a convertirlo en progreso real.",
-            style: "bg-violet-50 border-violet-100 text-violet-700",
+            style: "border-violet-100 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-300",
         };
     }, [academicGoals.length, activeGoals.length]);
 
@@ -176,7 +176,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
         setAiError("");
 
         if (academicGoals.length === 0) {
-            setAiError("No tienes ningún objetivo académico activo.");
+            setAiError("No tienes ningÃºn objetivo acadÃ©mico activo.");
             return;
         }
 
@@ -270,7 +270,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
             showSuccess(res.message || "Objetivo priorizado correctamente.");
             router.refresh();
             
-            // Limpiar el mensaje de éxito después de 3 segundos
+            // Limpiar el mensaje de Ã©xito despuÃ©s de 3 segundos
             setTimeout(() => setSaveSuccess(""), 3000);
             
         } catch (error) {
@@ -296,7 +296,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
             showSuccess(res.message || "Tareas repartidas correctamente.");
             router.refresh();
             
-            // Limpiar el mensaje de éxito después de 3 segundos
+            // Limpiar el mensaje de Ã©xito despuÃ©s de 3 segundos
             setTimeout(() => setSaveSuccess(""), 3000);
             
         } catch (error) {
@@ -370,15 +370,15 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
     }
 
     return (
-        <div className="min-h-full bg-[#f8fafc] p-6 space-y-6">
+        <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold text-[#0f172a]">Mis Objetivos</h1>
-                <p className="text-sm text-gray-400 mt-0.5">
+                <h1 className="text-2xl font-bold text-foreground">Mis Objetivos</h1>
+                <p className="mt-0.5 text-sm text-muted-foreground">
                     Sigue tu progreso y deja que la IA te ayude a convertir metas en sesiones
                 </p>
             </div>
 
-            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
+            <div className="app-card p-4">
                 <div className="grid grid-cols-1 xl:grid-cols-[1fr_0.9fr_1.35fr] gap-4 xl:items-center">
                     <div className="flex items-start gap-3 min-w-0">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shrink-0">
@@ -386,9 +386,9 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                         </div>
 
                         <div className="min-w-0">
-                            <p className="text-sm font-semibold text-[#0f172a]">Asistente IA</p>
-                            <p className="text-xs text-gray-400 mb-2">
-                                Sugerencias rápidas para tus objetivos
+                            <p className="text-sm font-semibold text-foreground">Asistente IA</p>
+                            <p className="mb-2 text-xs text-muted-foreground">
+                                Sugerencias rÃ¡pidas para tus objetivos
                             </p>
 
                             <div className={`rounded-xl border px-3 py-2.5 ${suggestion.style}`}>
@@ -403,7 +403,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                             type="button"
                             onClick={handleSuggestSessions}
                             disabled={aiLoading || academicGoals.length === 0}
-                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {aiLoading ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -417,7 +417,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                             type="button"
                             onClick={handlePrioritizeGoals}
                             disabled={aiLoading}
-                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {aiLoading ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -431,7 +431,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                             type="button"
                             onClick={handleDistributeWeeklyTasks}
                             disabled={aiLoading}
-                            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {aiLoading ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -454,14 +454,14 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                     }
                                 }}
                                 placeholder='Ej. "Divide historia en 4 sesiones antes del viernes"'
-                                className="flex-1 h-12 rounded-xl border border-gray-200 px-4 text-sm text-gray-700 outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                                className="app-input h-12 px-4"
                             />
                             <button
                                 type="button"
                                 onClick={() => void handleCommandAction()}
                                 disabled={aiLoading || !command.trim()}
-                                className="h-12 px-6 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all shrink-0"
-                                style={{ background: "linear-gradient(90deg, #10b981, #059669)" }}
+                                className="h-12 shrink-0 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-700 px-6 text-sm font-semibold text-white transition-all hover:brightness-110"
+                                
                             >
                                 Probar
                             </button>
@@ -471,49 +471,49 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
             </div>
 
             {aiError ? (
-                <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 flex items-start gap-2 text-red-600">
+                <div className="flex items-start gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-red-600 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
                     <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                     <p className="text-sm">{aiError}</p>
                 </div>
             ) : null}
 
             {saveSuccess ? (
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-emerald-700">
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
                     <p className="text-sm font-medium">{saveSuccess}</p>
                 </div>
             ) : null}
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <div className="app-card p-4">
                     <div className="flex items-center gap-2 text-emerald-600">
                         <TrendingUp className="w-4 h-4" />
                         <span className="text-sm font-medium">Progreso medio</span>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-[#0f172a]">{avgProgress}%</p>
+                    <p className="mt-2 text-2xl font-bold text-foreground">{avgProgress}%</p>
                 </div>
 
-                <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <div className="app-card p-4">
                     <div className="flex items-center gap-2 text-orange-500">
                         <Flame className="w-4 h-4" />
                         <span className="text-sm font-medium">Mejor racha</span>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-[#0f172a]">{maxStreak}</p>
+                    <p className="mt-2 text-2xl font-bold text-foreground">{maxStreak}</p>
                 </div>
 
-                <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <div className="app-card p-4">
                     <div className="flex items-center gap-2 text-violet-600">
                         <Trophy className="w-4 h-4" />
                         <span className="text-sm font-medium">Completados</span>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-[#0f172a]">{completedGoals.length}</p>
+                    <p className="mt-2 text-2xl font-bold text-foreground">{completedGoals.length}</p>
                 </div>
 
-                <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <div className="app-card p-4">
                     <div className="flex items-center gap-2 text-sky-600">
                         <Target className="w-4 h-4" />
                         <span className="text-sm font-medium">Activos</span>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-[#0f172a]">{activeGoals.length}</p>
+                    <p className="mt-2 text-2xl font-bold text-foreground">{activeGoals.length}</p>
                 </div>
             </div>
 
@@ -523,19 +523,19 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
                         onClick={() => setPlanOpen(false)}
                     />
-                    <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
+                    <div className="app-modal relative w-full max-w-2xl space-y-5 p-6">
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <h3 className="text-lg font-bold text-[#0f172a]">
+                                <h3 className="text-lg font-bold text-foreground">
                                     Sesiones sugeridas
                                 </h3>
-                                <p className="text-sm text-gray-400 mt-0.5">{planGoalTitle}</p>
+                                <p className="mt-0.5 text-sm text-muted-foreground">{planGoalTitle}</p>
                             </div>
 
                             <button
                                 type="button"
                                 onClick={() => setPlanOpen(false)}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                className="text-muted-foreground transition-colors hover:text-foreground"
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -550,22 +550,22 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                             {suggestedPlan.sessions.map((session, index) => (
                                 <div
                                     key={`${session.title}-${index}`}
-                                    className="rounded-2xl border border-gray-100 bg-[#f8fafc] p-4"
+                                    className="rounded-2xl border border-border bg-muted/35 p-4"
                                 >
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="min-w-0">
-                                            <p className="text-sm font-semibold text-[#0f172a]">
+                                            <p className="text-sm font-semibold text-foreground">
                                                 {session.title}
                                             </p>
-                                            <p className="text-xs text-gray-400 mt-1">{session.focus}</p>
+                                            <p className="mt-1 text-xs text-muted-foreground">{session.focus}</p>
                                         </div>
 
-                                        <span className="shrink-0 rounded-full bg-white border border-gray-200 px-2.5 py-1 text-xs font-semibold text-gray-600">
+                                        <span className="shrink-0 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">
                                             {session.durationMin} min
                                         </span>
                                     </div>
 
-                                    <p className="text-sm text-gray-500 mt-3">{session.reason}</p>
+                                    <p className="mt-3 text-sm text-muted-foreground">{session.reason}</p>
                                 </div>
                             ))}
                         </div>
@@ -574,7 +574,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                             <button
                                 type="button"
                                 onClick={() => setPlanOpen(false)}
-                                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                                className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
                             >
                                 Cerrar
                             </button>
@@ -584,7 +584,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                 onClick={handleSaveSuggestedSessions}
                                 disabled={savingTasks}
                                 className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center gap-2"
-                                style={{ background: "linear-gradient(90deg, #10b981, #059669)" }}
+                                
                             >
                                 {savingTasks ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                                 {savingTasks ? "Guardando..." : "Guardar como tareas"}
@@ -600,13 +600,13 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
                         onClick={() => setPrioritizeModalOpen(false)}
                     />
-                    <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
+                    <div className="app-modal relative w-full max-w-2xl space-y-5 p-6">
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <h3 className="text-lg font-bold text-[#0f172a]">
+                                <h3 className="text-lg font-bold text-foreground">
                                     Ajustar prioridad de objetivos
                                 </h3>
-                                <p className="text-sm text-gray-400 mt-0.5">
+                                <p className="mt-0.5 text-sm text-muted-foreground">
                                     Elige un objetivo y ajusta su prioridad
                                 </p>
                             </div>
@@ -614,7 +614,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                             <button
                                 type="button"
                                 onClick={() => setPrioritizeModalOpen(false)}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                className="text-muted-foreground transition-colors hover:text-foreground"
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -633,9 +633,9 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                 };
 
                                 const priorityColors = {
-                                    low: "bg-gray-100 text-gray-600 border-gray-300",
-                                    medium: "bg-blue-100 text-blue-600 border-blue-300",
-                                    high: "bg-red-100 text-red-600 border-red-300"
+                                    low: "border-gray-300 bg-gray-100 text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200",
+                                    medium: "border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
+                                    high: "border-red-300 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
                                 };
 
                                 const priorityLabels = {
@@ -645,9 +645,9 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                 };
 
                                 const categoryLabels = {
-                                    academic: "Académico",
+                                    academic: "AcadÃ©mico",
                                     personal: "Personal",
-                                    habit: "Hábito"
+                                    habit: "HÃ¡bito"
                                 };
 
                                 const currentPriority = goal.priority || 'medium';
@@ -655,12 +655,12 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                 return (
                                     <div
                                         key={goal.id}
-                                        className="w-full rounded-2xl border border-gray-200 bg-[#f8fafc] p-4 hover:bg-white hover:border-emerald-300 transition-all"
+                                        className="w-full rounded-2xl border border-border bg-muted/30 p-4 transition-all hover:border-emerald-400/60 hover:bg-card"
                                     >
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <h4 className="text-sm font-semibold text-[#0f172a] truncate">
+                                                    <h4 className="truncate text-sm font-semibold text-foreground">
                                                         {goal.title}
                                                     </h4>
                                                     <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium border ${categoryColors[goal.category || 'personal']}`}>
@@ -672,12 +672,12 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                                 </div>
                                                 
                                                 {goal.description && (
-                                                    <p className="text-xs text-gray-500 mb-2 line-clamp-2">
+                                                    <p className="mb-2 line-clamp-2 text-xs text-muted-foreground">
                                                         {goal.description}
                                                     </p>
                                                 )}
 
-                                                <div className="flex items-center gap-4 text-xs text-gray-400 mb-3">
+                                                <div className="mb-3 flex items-center gap-4 text-xs text-muted-foreground">
                                                     <span>
                                                         Progreso: {goal.current_value}/{goal.target_value} {goal.unit}
                                                     </span>
@@ -686,7 +686,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                                     </span>
                                                     {goal.due_date && (
                                                         <span>
-                                                            Límite: {new Date(goal.due_date).toLocaleDateString()}
+                                                            LÃ­mite: {new Date(goal.due_date).toLocaleDateString()}
                                                         </span>
                                                     )}
                                                 </div>
@@ -694,7 +694,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                                 <div className="flex gap-2">
                                                     <button
                                                         onClick={() => handleSelectGoalToPrioritize(goal.id, 'down')}
-                                                        className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                                                        className="flex-1 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
                                                     >
                                                         <span className="mr-1">-</span> Bajar
                                                     </button>
@@ -706,7 +706,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                                     </button>
                                                     <button
                                                         onClick={() => handleSelectGoalToPrioritize(goal.id, 'up')}
-                                                        className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                                                        className="flex-1 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
                                                     >
                                                         <span className="mr-1">+</span> Subir
                                                     </button>
@@ -728,7 +728,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                             <button
                                 type="button"
                                 onClick={() => setPrioritizeModalOpen(false)}
-                                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                                className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
                             >
                                 Cancelar
                             </button>
@@ -743,21 +743,21 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
                         onClick={() => setSessionsModalOpen(false)}
                     />
-                    <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-6 space-y-5">
+                    <div className="app-modal relative w-full max-w-2xl space-y-5 p-6">
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <h3 className="text-lg font-bold text-[#0f172a]">
+                                <h3 className="text-lg font-bold text-foreground">
                                     Seleccionar objetivo para sesiones
                                 </h3>
-                                <p className="text-sm text-gray-400 mt-0.5">
-                                    Elige qué objetivo académico quieres convertir en sesiones de estudio
+                                <p className="mt-0.5 text-sm text-muted-foreground">
+                                    Elige quÃ© objetivo acadÃ©mico quieres convertir en sesiones de estudio
                                 </p>
                             </div>
 
                             <button
                                 type="button"
                                 onClick={() => setSessionsModalOpen(false)}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                className="text-muted-foreground transition-colors hover:text-foreground"
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -770,9 +770,9 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                     : 0;
                                 
                                 const priorityColors = {
-                                    low: "bg-gray-100 text-gray-600 border-gray-300",
-                                    medium: "bg-blue-100 text-blue-600 border-blue-300",
-                                    high: "bg-red-100 text-red-600 border-red-300"
+                                    low: "border-gray-300 bg-gray-100 text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200",
+                                    medium: "border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
+                                    high: "border-red-300 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
                                 };
 
                                 const priorityLabels = {
@@ -787,16 +787,16 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                     <button
                                         key={goal.id}
                                         onClick={() => handleSelectGoalForSessions(goal.id)}
-                                        className="w-full rounded-2xl border border-gray-200 bg-[#f8fafc] p-4 hover:bg-white hover:border-emerald-300 transition-all text-left"
+                                        className="w-full rounded-2xl border border-border bg-muted/30 p-4 text-left transition-all hover:border-emerald-400/60 hover:bg-card"
                                     >
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <h4 className="text-sm font-semibold text-[#0f172a] truncate">
+                                                    <h4 className="truncate text-sm font-semibold text-foreground">
                                                         {goal.title}
                                                     </h4>
                                                     <span className="shrink-0 rounded-full px-2 py-1 text-xs font-medium border bg-emerald-100 text-emerald-700 border-emerald-200">
-                                                        Académico
+                                                        AcadÃ©mico
                                                     </span>
                                                     <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium border ${priorityColors[currentPriority]}`}>
                                                         {priorityLabels[currentPriority]}
@@ -804,12 +804,12 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                                 </div>
                                                 
                                                 {goal.description && (
-                                                    <p className="text-xs text-gray-500 mb-2 line-clamp-2">
+                                                    <p className="mb-2 line-clamp-2 text-xs text-muted-foreground">
                                                         {goal.description}
                                                     </p>
                                                 )}
 
-                                                <div className="flex items-center gap-4 text-xs text-gray-400">
+                                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                                     <span>
                                                         Progreso: {goal.current_value}/{goal.target_value} {goal.unit}
                                                     </span>
@@ -818,7 +818,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                                     </span>
                                                     {goal.due_date && (
                                                         <span>
-                                                            Límite: {new Date(goal.due_date).toLocaleDateString()}
+                                                            LÃ­mite: {new Date(goal.due_date).toLocaleDateString()}
                                                         </span>
                                                     )}
                                                 </div>
@@ -839,7 +839,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                             <button
                                 type="button"
                                 onClick={() => setSessionsModalOpen(false)}
-                                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                                className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
                             >
                                 Cancelar
                             </button>
@@ -860,3 +860,4 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
         </div>
     );
 }
+

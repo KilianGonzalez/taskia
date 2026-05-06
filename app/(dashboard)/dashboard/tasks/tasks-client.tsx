@@ -114,9 +114,9 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+      <div className="app-modal relative w-full max-w-md space-y-5 p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[#0f172a] dark:text-white">Nueva tarea</h2>
+          <h2 className="text-lg font-bold text-foreground">Nueva tarea</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -193,8 +193,7 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               Cancelar
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-60"
-              style={{ background: 'linear-gradient(90deg, #1e2d5e, #2d4a8a)' }}>
+              className="brand-gradient flex-1 rounded-xl py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               {loading ? 'Guardando...' : 'Crear tarea'}
             </button>
@@ -315,7 +314,7 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-gray-950 p-6 space-y-6">
+    <div className="space-y-6">
 
       {showModal && (
         <NewTaskModal onClose={() => setShowModal(false)} onCreated={() => router.refresh()} />
@@ -334,14 +333,12 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#0f172a] dark:text-white">Mis Tareas</h1>
+          <h1 className="text-2xl font-bold text-foreground">Mis tareas</h1>
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">
             {pending.length} pendientes · {completed.length} completadas
           </p>
         </div>
-        <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-all"
-          style={{ background: 'linear-gradient(90deg, #1e2d5e, #2d4a8a)' }}>
+        <button onClick={() => setShowModal(true)} className="app-button-gradient flex items-center gap-2">
           <Plus className="w-4 h-4" />
           Nueva tarea
         </button>
@@ -353,16 +350,16 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input type="text" placeholder="Buscar tareas o categorías..." value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all shadow-sm" />
+            className="app-input pl-10 pr-4" />
         </div>
         <div className="relative">
           <button onClick={() => setShowPriorityMenu(!showPriorityMenu)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-600 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+            className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground shadow-sm transition-all hover:bg-muted/60 hover:text-foreground">
             <Filter className="w-4 h-4" />
             {priorityLabels[priorityFilter]}
           </button>
           {showPriorityMenu && (
-            <div className="absolute right-0 top-11 z-10 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl shadow-lg py-1 w-48">
+            <div className="absolute right-0 top-11 z-10 w-48 rounded-xl border border-border bg-card py-1 shadow-lg">
               {Object.entries(priorityLabels).map(([key, label]) => (
                 <button key={key}
                   onClick={() => { setPriorityFilter(key); setShowPriorityMenu(false) }}
@@ -380,7 +377,7 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl p-1 w-fit shadow-sm">
+      <div className="app-card flex w-fit items-center gap-1 p-1">
         {([
           { key: 'todas',       label: 'Todas',       count: tasks.length },
           { key: 'pendientes',  label: 'Pendientes',  count: pending.length },
@@ -418,13 +415,13 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
           {Object.entries(grouped).map(([date, dateTasks]) => {
             const completedInGroup = dateTasks.filter(t => t.completed).length
             return (
-              <div key={date} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+              <div key={date} className="app-card overflow-hidden">
 
                 {/* Cabecera grupo */}
                 <div className="flex items-center justify-between px-5 py-3 border-b border-gray-50 dark:border-gray-800">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                    <span className="text-sm font-semibold text-[#0f172a] dark:text-white capitalize">{date}</span>
+                    <span className="text-sm font-semibold capitalize text-foreground">{date}</span>
                     <span className="text-xs text-gray-400 dark:text-gray-500">{completedInGroup}/{dateTasks.length} completadas</span>
                   </div>
                 </div>
@@ -536,11 +533,11 @@ export function TasksClient({ initialTasks }: { initialTasks: Task[] }) {
           </div>
 
           {Object.entries(groupedExpired).map(([date, dateTasks]) => (
-            <div key={`expired-${date}`} className="bg-white dark:bg-gray-900 rounded-2xl border border-red-100 dark:border-red-900 shadow-sm overflow-hidden">
+            <div key={`expired-${date}`} className="overflow-hidden rounded-2xl border border-red-200/60 bg-card shadow-sm dark:border-red-900">
               <div className="flex items-center justify-between px-5 py-3 border-b border-red-50 dark:border-red-900">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-red-500" />
-                  <span className="text-sm font-semibold text-[#0f172a] dark:text-white capitalize">{date}</span>
+                  <span className="text-sm font-semibold capitalize text-foreground">{date}</span>
                   <span className="text-xs text-gray-400 dark:text-gray-500">{dateTasks.length} tareas</span>
                 </div>
               </div>

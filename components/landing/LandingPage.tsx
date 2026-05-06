@@ -6,7 +6,7 @@ import { Footer } from './Footer'
 
 export function LandingPage() {
   return (
-    <main className="min-h-screen bg-white text-slate-900">
+    <main className="min-h-screen bg-background text-foreground">
       <Hero />
       <Benefits />
       <ProductShowcase />

@@ -1,18 +1,18 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Clock, Calendar, Target, ArrowRight, Lightbulb } from 'lucide-react'
+import { ArrowRight, Calendar, Clock, Lightbulb, Target } from 'lucide-react'
 
 const STORAGE_KEY = 'taskia_onboarding_step1'
 
 const steps = [
   { label: 'Tu semana', sub: 'Configura tu horario', icon: Clock },
   { label: 'Compromisos fijos', sub: 'Clases y actividades', icon: Calendar },
-  { label: 'Objetivos', sub: 'Exámenes y entregas', icon: Target },
+  { label: 'Objetivos', sub: 'Examenes y entregas', icon: Target },
 ]
 
-const DAYS = ['Lun', 'Mar', 'Mi', 'Jue', 'Vie', 'Sáb', 'Dom']
+const DAYS = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom']
 
 const TIMEZONES = [
   'Europa/Madrid',
@@ -39,31 +39,17 @@ const DEFAULT_STEP1_STATE: Step1FormState = {
 }
 
 function getStoredStep1State(): Step1FormState {
-  if (typeof window === 'undefined') {
-    return DEFAULT_STEP1_STATE
-  }
+  if (typeof window === 'undefined') return DEFAULT_STEP1_STATE
 
   const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) {
-    return DEFAULT_STEP1_STATE
-  }
+  if (!raw) return DEFAULT_STEP1_STATE
 
   try {
     const saved = JSON.parse(raw) as Partial<Step1FormState>
-
     return {
-      timezone:
-        typeof saved.timezone === 'string'
-          ? saved.timezone
-          : DEFAULT_STEP1_STATE.timezone,
-      startTime:
-        typeof saved.startTime === 'string'
-          ? saved.startTime
-          : DEFAULT_STEP1_STATE.startTime,
-      endTime:
-        typeof saved.endTime === 'string'
-          ? saved.endTime
-          : DEFAULT_STEP1_STATE.endTime,
+      timezone: typeof saved.timezone === 'string' ? saved.timezone : DEFAULT_STEP1_STATE.timezone,
+      startTime: typeof saved.startTime === 'string' ? saved.startTime : DEFAULT_STEP1_STATE.startTime,
+      endTime: typeof saved.endTime === 'string' ? saved.endTime : DEFAULT_STEP1_STATE.endTime,
       studyDays: Array.isArray(saved.studyDays)
         ? saved.studyDays.filter((day): day is number => typeof day === 'number')
         : DEFAULT_STEP1_STATE.studyDays,
@@ -75,52 +61,32 @@ function getStoredStep1State(): Step1FormState {
 
 function Stepper({ current }: { current: number }) {
   return (
-    <div className="flex items-center justify-center gap-0 mb-10">
+    <div className="mb-10 flex items-center justify-center gap-0">
       {steps.map((step, i) => {
         const Icon = step.icon
         const isActive = i === current
         const isCompleted = i < current
 
         return (
-          <div key={i} className="flex items-center">
-            <div className="flex flex-col items-center w-32">
+          <div key={step.label} className="flex items-center">
+            <div className="flex w-32 flex-col items-center">
               <div
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-all ${
+                className={`mb-2 flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-300 ${
                   isActive || isCompleted
-                    ? 'bg-gradient-to-br from-teal-400 to-teal-600 shadow-md'
-                    : 'bg-gray-100'
+                    ? 'brand-gradient text-white shadow-md'
+                    : 'bg-muted text-muted-foreground'
                 }`}
               >
-                <Icon
-                  className={`w-5 h-5 ${
-                    isActive || isCompleted ? 'text-white' : 'text-gray-400'
-                  }`}
-                />
+                <Icon className="h-5 w-5" />
               </div>
-
-              <p
-                className={`text-xs font-semibold text-center ${
-                  isActive ? 'text-gray-800' : 'text-gray-400'
-                }`}
-              >
+              <p className={`text-center text-xs font-semibold ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
                 {step.label}
               </p>
-
-              <p
-                className={`text-[10px] text-center mt-0.5 ${
-                  isActive ? 'text-gray-500' : 'text-gray-300'
-                }`}
-              >
-                {step.sub}
-              </p>
+              <p className="mt-0.5 text-center text-[10px] text-muted-foreground">{step.sub}</p>
             </div>
 
             {i < steps.length - 1 && (
-              <div
-                className={`w-24 h-0.5 mb-8 ${
-                  i < current ? 'bg-teal-400' : 'bg-gray-200'
-                }`}
-              />
+              <div className={`mb-7 h-0.5 w-24 ${i < current ? 'bg-primary/70' : 'bg-border'}`} />
             )}
           </div>
         )
@@ -131,7 +97,6 @@ function Stepper({ current }: { current: number }) {
 
 export default function OnboardingPage() {
   const router = useRouter()
-
   const [stepState, setStepState] = useState<Step1FormState>(getStoredStep1State)
 
   const toggleDay = (index: number) => {
@@ -143,14 +108,8 @@ export default function OnboardingPage() {
     }))
   }
 
-  const updateStepState = <Key extends keyof Step1FormState>(
-    key: Key,
-    value: Step1FormState[Key]
-  ) => {
-    setStepState((prev) => ({
-      ...prev,
-      [key]: value,
-    }))
+  const updateStepState = <Key extends keyof Step1FormState>(key: Key, value: Step1FormState[Key]) => {
+    setStepState((prev) => ({ ...prev, [key]: value }))
   }
 
   const { timezone, startTime, endTime, studyDays } = stepState
@@ -172,143 +131,119 @@ export default function OnboardingPage() {
     router.push('/onboarding/step2')
   }
 
-  const handleSkip = () => {
-    persistStep()
-    router.push('/onboarding/step2')
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-blue-50/20 flex flex-col items-center justify-center p-6">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shadow-md">
-          <span className="text-white font-black text-lg">T</span>
-        </div>
-        <span className="text-xl font-bold text-gray-800">TaskIA</span>
-      </div>
-
-      <p className="text-gray-400 text-sm mb-8">
-        Vamos a configurar tu planificador en 3 pasos
-      </p>
-
-      <Stepper current={0} />
-
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 w-full max-w-lg p-8 space-y-6">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Configura tu semana</h2>
-          <p className="text-sm text-gray-400 mt-1">
-            Cuéntanos cómo es tu rutina habitual para organizar mejor tus tareas
-          </p>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-gray-700 block mb-2">
-            Zona horaria
-          </label>
-          <select
-            value={timezone}
-            onChange={(e) => updateStepState('timezone', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300 transition-all"
-          >
-            {TIMEZONES.map((tz) => (
-              <option key={tz} value={tz}>
-                {tz}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium text-gray-700 block mb-2">
-              Tu día empieza a las
-            </label>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => updateStepState('startTime', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300 transition-all"
-            />
+    <div className="min-h-screen section-enter bg-gradient-to-br from-slate-50 via-teal-50/30 to-blue-50/20 px-6 py-10 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <div className="mx-auto flex w-full max-w-3xl flex-col items-center">
+        <div className="mb-8 flex items-center gap-3">
+          <div className="brand-gradient flex h-10 w-10 items-center justify-center rounded-xl shadow-md">
+            <span className="text-lg font-black text-white">T</span>
           </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700 block mb-2">
-              Y termina a las
-            </label>
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => updateStepState('endTime', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300 transition-all"
-            />
-          </div>
+          <span className="text-xl font-bold text-foreground">TaskIA</span>
         </div>
 
-        <div>
-          <label className="text-sm font-medium text-gray-700 block mb-3">
-            ¿Qué días estudias normalmente?
-          </label>
+        <p className="mb-8 text-sm text-muted-foreground">Vamos a configurar tu planificador en 3 pasos</p>
 
-          <div className="flex gap-2">
-            {DAYS.map((day, i) => {
-              const isSelected = studyDays.includes(i)
+        <Stepper current={0} />
 
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => toggleDay(i)}
-                  className={`flex-1 py-3 rounded-2xl text-sm font-semibold transition-all ${
-                    isSelected
-                      ? 'bg-gradient-to-b from-teal-400 to-teal-600 text-white shadow-md shadow-teal-200'
-                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                  }`}
-                >
-                  {day}
-                </button>
-              )
-            })}
-          </div>
-
-          <p className="text-xs text-gray-400 mt-2">
-            Selecciona los días en los que planeas estudiar o hacer tareas
-          </p>
-        </div>
-
-        <div className="flex items-start gap-3 bg-teal-50 border border-teal-100 rounded-2xl px-4 py-3.5">
-          <Lightbulb className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+        <div className="surface-card-strong w-full max-w-xl space-y-6 p-8">
           <div>
-            <p className="text-sm font-semibold text-teal-800">
-              Tip: Puedes cambiar esto después
-            </p>
-            <p className="text-xs text-teal-600 mt-0.5">
-              No te preocupes si tu horario varía. Esto es solo para empezar y
-              puedes ajustarlo cuando quieras.
+            <h2 className="text-xl font-bold text-foreground">Configura tu semana</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Cuentanos como es tu rutina para organizar mejor tus tareas.
             </p>
           </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-foreground">Zona horaria</label>
+            <select
+              value={timezone}
+              onChange={(e) => updateStepState('timezone', e.target.value)}
+              className="w-full rounded-2xl border border-input bg-background/85 px-4 py-3 text-sm text-foreground outline-none transition-all focus:border-ring focus:ring-2 focus:ring-ring/30"
+            >
+              {TIMEZONES.map((tz) => (
+                <option key={tz} value={tz}>
+                  {tz}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Tu dia empieza</label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => updateStepState('startTime', e.target.value)}
+                className="w-full rounded-2xl border border-input bg-background/85 px-4 py-3 text-sm text-foreground outline-none transition-all focus:border-ring focus:ring-2 focus:ring-ring/30"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Tu dia termina</label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => updateStepState('endTime', e.target.value)}
+                className="w-full rounded-2xl border border-input bg-background/85 px-4 py-3 text-sm text-foreground outline-none transition-all focus:border-ring focus:ring-2 focus:ring-ring/30"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-3 block text-sm font-medium text-foreground">Que dias estudias normalmente?</label>
+            <div className="flex gap-2">
+              {DAYS.map((day, i) => {
+                const isSelected = studyDays.includes(i)
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => toggleDay(i)}
+                    className={`flex-1 rounded-2xl py-3 text-sm font-semibold transition-all duration-300 ${
+                      isSelected
+                        ? 'brand-gradient text-white shadow-md'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/75'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Selecciona los dias de estudio habituales.</p>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-2xl border border-teal-200/70 bg-teal-50/80 px-4 py-3.5 dark:border-teal-900 dark:bg-teal-950/35">
+            <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <div>
+              <p className="text-sm font-semibold text-teal-800 dark:text-teal-200">Tip: puedes cambiar esto despues</p>
+              <p className="mt-0.5 text-xs text-teal-700 dark:text-teal-300">Empieza simple y ajusta el horario cuando quieras.</p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={handleContinue}
+              className="rounded-2xl border border-input px-6 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted/60"
+            >
+              Saltar por ahora
+            </button>
+
+            <button
+              type="button"
+              onClick={handleContinue}
+              className="brand-gradient flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110"
+            >
+              Continuar
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex gap-3 pt-1">
-          <button
-            type="button"
-            onClick={handleSkip}
-            className="px-6 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-500 hover:bg-gray-50 transition-all"
-          >
-            Saltar por ahora
-          </button>
-
-          <button
-            type="button"
-            onClick={handleContinue}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-white text-sm font-semibold hover:opacity-90 transition-all shadow-md shadow-teal-200"
-            style={{ background: 'linear-gradient(90deg, #14b8a6, #0f766e)' }}
-          >
-            Continuar
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
+        <p className="mt-6 text-xs text-muted-foreground">Paso 1 de 3</p>
       </div>
-
-      <p className="text-xs text-gray-300 mt-6">Paso 1 de 3</p>
     </div>
   )
 }
