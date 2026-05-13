@@ -802,22 +802,33 @@ export async function planWeekWithAI() {
     difficulty: t.difficulty || 2,
   }))
 
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const fmtLocal = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+
   const slotsJson = freeSlots.map((s) => ({
-    date: s.date,
-    from: s.start.toTimeString().slice(0, 5),
-    to: s.end.toTimeString().slice(0, 5),
+    start: fmtLocal(s.start),
+    end: fmtLocal(s.end),
     availMin: s.availableMinutes,
   }))
 
-  const prompt = `Planificador para adolescentes. Asigna estas tareas a los huecos libres.
+  const nowLocal = fmtLocal(now)
+
+  const prompt = `Planificador para adolescentes. Ahora son las ${nowLocal}. Asigna estas tareas a los huecos libres.
 
 TAREAS:
 ${JSON.stringify(tasksJson)}
 
-HUECOS:
+HUECOS DISPONIBLES (start y end son fechas/horas exactas, el startTime de cada tarea debe estar dentro del rango start-end del hueco):
 ${JSON.stringify(slotsJson)}
 
-Reglas: prioridad alta va primero, dificultad>=4 en mañana (<13h), deja 15min entre tareas, asigna el máximo posible.
+Reglas ESTRICTAS:
+- startTime debe ser >= start del hueco y < end del hueco
+- startTime debe ser >= ${nowLocal} (nunca en el pasado)
+- prioridad alta va primero
+- dificultad>=4 preferir mañana (antes de T13:00)
+- deja 15 min entre tareas
+- asigna el máximo posible
 
 Solo JSON: {"assignments":[{"taskId":"...","startTime":"YYYY-MM-DDTHH:mm"}],"summary":"resumen breve"}`
 
@@ -860,6 +871,9 @@ Solo JSON: {"assignments":[{"taskId":"...","startTime":"YYYY-MM-DDTHH:mm"}],"sum
       .map((a) => {
         const task = allPending.find((t) => t.id === a.taskId)
         if (!task || !a.startTime) return null
+        // Descartar startTime en el pasado
+        const st = new Date(a.startTime)
+        if (isNaN(st.getTime()) || st < now) return null
         return { ...task, due_date: a.startTime }
       })
       .filter(Boolean)

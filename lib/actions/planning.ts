@@ -91,9 +91,13 @@ export function calculateFreeSlots(
 export function assignTasksToSlots<T extends { estimated_duration_min?: number | null }>(
   tasks: T[],
   slots: FreeSlot[],
-  breakMinutes = 15
+  breakMinutes = 15,
+  options: { maxTasksPerDay?: number; maxMinutesPerDay?: number } = {}
 ): Array<{ task: T; startTime: Date }> {
+  const { maxTasksPerDay, maxMinutesPerDay } = options
   const assignments: Array<{ task: T; startTime: Date }> = []
+  const dayTaskCount = new Map<string, number>()
+  const dayMinutes = new Map<string, number>()
 
   let slotIndex = 0
   let cursor: Date | null = slots[0] ? new Date(slots[0].start) : null
@@ -105,12 +109,28 @@ export function assignTasksToSlots<T extends { estimated_duration_min?: number |
 
     while (slotIndex < slots.length && cursor) {
       const slot = slots[slotIndex]
+      const date = slot.date
+      const tasksToday = dayTaskCount.get(date) ?? 0
+      const minutesToday = dayMinutes.get(date) ?? 0
+
+      const dayFull =
+        (maxTasksPerDay !== undefined && tasksToday >= maxTasksPerDay) ||
+        (maxMinutesPerDay !== undefined && minutesToday + taskDuration > maxMinutesPerDay)
+
+      if (dayFull) {
+        while (slotIndex < slots.length && slots[slotIndex].date === date) slotIndex++
+        cursor = slotIndex < slots.length ? new Date(slots[slotIndex].start) : null
+        continue
+      }
+
       const remaining = Math.floor(
         (slot.end.getTime() - cursor.getTime()) / (1000 * 60)
       )
 
       if (remaining >= taskDuration) {
         assignments.push({ task, startTime: new Date(cursor) })
+        dayTaskCount.set(date, tasksToday + 1)
+        dayMinutes.set(date, minutesToday + taskDuration)
         cursor = new Date(cursor.getTime() + (taskDuration + breakMinutes) * 60 * 1000)
         break
       }

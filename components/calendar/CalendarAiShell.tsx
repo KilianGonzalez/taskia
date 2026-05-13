@@ -12,6 +12,7 @@ import {
   createTasksFromSplitTask,
   splitTaskWithAI,
   updateFlexibleTask,
+  parseNaturalLanguageTask,
 } from '@/app/actions'
 import { isHighTaskPriority } from '@/lib/tasks/priority'
 
@@ -708,42 +709,44 @@ export function CalendarAiShell({
   }
 
   async function handleCreateBlock(prompt: string) {
-    const title = extractQuotedText(prompt)
-    const parsedTime = parseTime(prompt)
-    const duration = parseDuration(prompt) ?? 60
+    const parsed = await parseNaturalLanguageTask(prompt)
 
-    if (!title) {
-      setFeedback({
-        tone: 'error',
-        message: 'Para crear una tarea necesito que indiques el título entre comillas.',
-      })
+    if ('error' in parsed) {
+      setFeedback({ tone: 'error', message: parsed.error })
       return
     }
 
-    const dueDate = parsedTime
-      ? getNextOccurrence(parsedTime.hours, parsedTime.minutes, prompt)
-      : getNextOccurrence(9, 0, prompt)
+    const { title, date, time, durationMin, priority } = parsed.data
+
+    let dueDate: string
+    if (date && time) {
+      dueDate = `${date}T${time}:00`
+    } else if (date) {
+      dueDate = `${date}T09:00:00`
+    } else if (time) {
+      const [h, m] = time.split(':').map(Number)
+      dueDate = getNextOccurrence(h, m, prompt)
+    } else {
+      dueDate = getNextOccurrence(9, 0, prompt)
+    }
 
     const result = await createTask({
       title,
       category: 'general',
       due_date: dueDate,
-      estimated_duration_min: duration,
-      priority: 'media',
+      estimated_duration_min: durationMin ?? 60,
+      priority: priority ?? 'media',
       notes: 'Creada por IA desde calendario',
     })
 
     if (result.error) {
-      setFeedback({
-        tone: 'error',
-        message: result.error,
-      })
+      setFeedback({ tone: 'error', message: result.error })
       return
     }
 
     setFeedback({
       tone: 'success',
-      message: `He creado "${title}" para ${formatDateTime(dueDate)} (${duration} min).`,
+      message: `He creado "${title}" para ${formatDateTime(dueDate)} (${durationMin ?? 60} min).`,
     })
     router.refresh()
   }
@@ -1005,9 +1008,9 @@ export function CalendarAiShell({
         onSubmit={handleSubmit}
         isLoading={isProcessingCommand}
         suggestions={[
-          "Mueve tarea 'Repasar historia' a las 16:00",
-          "Crear tarea 'Resumen de química' a las 10:00 por 45 minutos",
-          "Divide tarea 'Proyecto final'",
+          "Mueve tarea Repasar historia a las 16:00",
+          "Crea examen de química el jueves a las 10:00 durante 45 minutos",
+          "Divide tarea Proyecto final",
         ]}
       />
 
