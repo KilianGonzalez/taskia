@@ -152,16 +152,23 @@ export function TaskDetailModal({
 
               {/* Metadatos */}
               <div className="space-y-2">
-                {task.due_date && (
-                  <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-2 rounded-lg">
-                    <Clock className="w-4 h-4 text-indigo-500" />
-                    <span>{new Date(task.due_date).toLocaleDateString('es-ES', { 
-                      weekday: 'long', 
-                      day: 'numeric', 
-                      month: 'long' 
-                    })}</span>
-                  </div>
-                )}
+                {task.due_date && (() => {
+                  const d = new Date(task.due_date)
+                  const hasTime = task.due_date.includes('T') && (d.getHours() !== 0 || d.getMinutes() !== 0)
+                  return (
+                    <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-2 rounded-lg">
+                      <Clock className="w-4 h-4 text-indigo-500" />
+                      <span>
+                        {d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        {hasTime && (
+                          <span className="ml-1 font-medium text-indigo-600 dark:text-indigo-400">
+                            a las {d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )
+                })()}
                 {task.estimated_duration_min && (
                   <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-2 rounded-lg">
                     <Clock className="w-4 h-4 text-emerald-500" />

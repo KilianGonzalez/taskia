@@ -28,11 +28,11 @@ export interface Goal {
   priority?: 'low' | 'medium' | 'high'
 }
 
-const GOAL_TAB_FILTER: Record<'Todos' | 'AcadÃ©mico' | 'Personal' | 'HÃ¡bitos', Goal['category'] | null> = {
+const GOAL_TAB_FILTER: Record<'Todos' | 'Académico' | 'Personal' | 'Hábitos', Goal['category'] | null> = {
   'Todos': null,
-  'AcadÃ©mico': 'academic',
+  'Académico': 'academic',
   'Personal': 'personal',
-  'HÃ¡bitos': 'habit',
+  'Hábitos': 'habit',
 }
 
 // ── Config visual ──────────────────────────────────────
@@ -587,7 +587,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
                       )}
                       {goal.streak && goal.streak > 0 ? (
                         <span className="flex items-center gap-1 text-[11px] text-orange-500 font-semibold">
-                          <Flame className="w-3 h-3" />{goal.streak} dÃ­as
+                          <Flame className="w-3 h-3" />{goal.streak} días
                         </span>
                       ) : null}
                     </div>

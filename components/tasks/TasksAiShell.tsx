@@ -13,6 +13,11 @@ import {
   X,
   Loader2,
   AlertCircle,
+  Brain,
+  CalendarDays,
+  ListOrdered,
+  Clock,
+  RefreshCcw,
 } from "lucide-react";
 import { TasksClient } from "@/app/(dashboard)/dashboard/tasks/tasks-client";
 import {
@@ -20,6 +25,10 @@ import {
   splitTaskWithAI,
   createTasksFromSplitTask,
   distributeWeeklyTasks,
+  autoReorderAllTasks,
+  planToday,
+  planWeekWithAI,
+  rescheduleOverdueTasks,
 } from "@/app/actions";
 import {
   isHighTaskPriority,
@@ -77,6 +86,13 @@ const taskPriorityLabels: Record<TaskPriorityLabel, string> = {
   alta: "Alta",
 };
 
+function formatDueDate(due_date: string) {
+  const d = new Date(due_date)
+  const hasTime = due_date.includes('T') && (d.getHours() !== 0 || d.getMinutes() !== 0)
+  const datePart = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+  return hasTime ? `${datePart} · ${d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}` : datePart
+}
+
 function normalizeSearchText(value: string) {
   return value
     .normalize("NFD")
@@ -127,9 +143,21 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
     null
   );
   const [savingSplitTasks, setSavingSplitTasks] = useState(false);
+  const [aiPlanLoading, setAiPlanLoading] = useState(false);
 
   const pendingTasks = useMemo(
     () => initialTasks.filter((task) => !task.completed),
+    [initialTasks]
+  );
+
+  const overdueTasks = useMemo(
+    () =>
+      initialTasks.filter(
+        (task) =>
+          !task.completed &&
+          task.due_date &&
+          new Date(task.due_date) < new Date()
+      ),
     [initialTasks]
   );
 
@@ -327,6 +355,66 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
     }
   }
 
+  async function handleAutoReorderAll() {
+    setAiError("");
+    setAiLoading(true);
+    try {
+      const res = await autoReorderAllTasks();
+      setAiLoading(false);
+      if (res?.error) { setAiError(res.error); return; }
+      showSuccess(res.message || "Tareas reordenadas automáticamente.");
+      router.refresh();
+    } catch {
+      setAiError("Error al reordenar tareas.");
+      setAiLoading(false);
+    }
+  }
+
+  async function handlePlanToday() {
+    setAiError("");
+    setAiLoading(true);
+    try {
+      const res = await planToday();
+      setAiLoading(false);
+      if (res?.error) { setAiError(res.error); return; }
+      showSuccess(res.message || "Tareas planificadas para hoy.");
+      router.refresh();
+    } catch {
+      setAiError("Error al planificar el día.");
+      setAiLoading(false);
+    }
+  }
+
+  async function handlePlanWeekWithAI() {
+    setAiError("");
+    setAiPlanLoading(true);
+    try {
+      const res = await planWeekWithAI();
+      setAiPlanLoading(false);
+      if (res?.error) { setAiError(res.error); return; }
+      showSuccess(res.message || "Plan semanal generado por IA.");
+      router.refresh();
+    } catch {
+      setAiError("Error al generar el plan con IA.");
+      setAiPlanLoading(false);
+    }
+  }
+
+  async function handleRescheduleOverdue() {
+    setAiError("");
+    setAiLoading(true);
+    try {
+      const res = await rescheduleOverdueTasks();
+      setAiLoading(false);
+      if (res?.error) { setAiError(res.error); return; }
+      showSuccess(res.message || "Tareas vencidas reprogramadas.");
+      router.refresh();
+    } catch {
+      setAiError("Error al reprogramar tareas vencidas.");
+      setAiLoading(false);
+    }
+  }
+
   async function handleCommandAction() {
     const trimmedCommand = command.trim();
     if (!trimmedCommand || aiLoading) {
@@ -372,7 +460,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
     if (
       normalizedCommand.includes("calendario") ||
       normalizedCommand.includes("agenda") ||
-      normalizedCommand.includes("planifica") ||
+      normalizedCommand.includes("semana") ||
       normalizedCommand.includes("programa")
     ) {
       setCommand("");
@@ -380,8 +468,31 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
       return;
     }
 
+    if (normalizedCommand.includes("hoy") || normalizedCommand.includes("planifica hoy")) {
+      setCommand("");
+      await handlePlanToday();
+      return;
+    }
+
+    if (
+      normalizedCommand.includes("ia") ||
+      normalizedCommand.includes("inteligente") ||
+      normalizedCommand.includes("automatico") ||
+      normalizedCommand.includes("automatica")
+    ) {
+      setCommand("");
+      await handlePlanWeekWithAI();
+      return;
+    }
+
+    if (normalizedCommand.includes("reorden") || normalizedCommand.includes("prioridad") || normalizedCommand.includes("todo")) {
+      setCommand("");
+      await handleAutoReorderAll();
+      return;
+    }
+
     setAiError(
-      'Prueba con algo como "Divide \'Trabajo final\'" o "Lleva mis tareas al calendario".'
+      'Prueba con "Divide \'Trabajo final\'", "Planifica hoy" o "Planifica semana".'
     );
   }
 
@@ -414,48 +525,88 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 max-w-[520px] w-full justify-self-center">
-            <button
-              type="button"
-              onClick={handleSplitTasks}
-              disabled={aiLoading}
-              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {aiLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
+          <div className="flex flex-col gap-2 max-w-[520px] w-full justify-self-center">
+            {/* Fila 1: acciones sobre tareas individuales */}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={handleSplitTasks}
+                disabled={aiLoading || aiPlanLoading}
+                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
                 <Split className="w-4 h-4" />
-              )}
-              {aiLoading ? "Dividiendo..." : "Dividir"}
-            </button>
+                Dividir
+              </button>
 
-            <button
-              type="button"
-              onClick={handlePrioritizeTasks}
-              disabled={aiLoading}
-              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {aiLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
+              <button
+                type="button"
+                onClick={handlePrioritizeTasks}
+                disabled={aiLoading || aiPlanLoading}
+                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
                 <ArrowUpCircle className="w-4 h-4" />
-              )}
-              {aiLoading ? "Priorizando..." : "Priorizar"}
-            </button>
+                Priorizar
+              </button>
 
-            <button
-              type="button"
-              onClick={() => void handleScheduleTasks()}
-              disabled={aiLoading}
-              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {aiLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <CalendarClock className="w-4 h-4" />
-              )}
-              {aiLoading ? "Repartiendo..." : "Al calendario"}
-            </button>
+              <button
+                type="button"
+                onClick={() => void handleAutoReorderAll()}
+                disabled={aiLoading || aiPlanLoading}
+                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {aiLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ListOrdered className="w-4 h-4" />
+                )}
+                {aiLoading ? "..." : "Priorizar todo"}
+              </button>
+            </div>
+
+            {/* Fila 2: planificación de agenda */}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => void handlePlanToday()}
+                disabled={aiLoading || aiPlanLoading}
+                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {aiLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Clock className="w-4 h-4" />
+                )}
+                {aiLoading ? "..." : "Plan hoy"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleScheduleTasks()}
+                disabled={aiLoading || aiPlanLoading}
+                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {aiLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CalendarDays className="w-4 h-4" />
+                )}
+                {aiLoading ? "..." : "Plan semana"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handlePlanWeekWithAI()}
+                disabled={aiLoading || aiPlanLoading}
+                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 px-3 py-2.5 text-sm font-medium text-indigo-700 dark:text-indigo-300 transition-all hover:bg-indigo-100 dark:hover:bg-indigo-900/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {aiPlanLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Brain className="w-4 h-4" />
+                )}
+                {aiPlanLoading ? "Pensando..." : "Plan IA"}
+              </button>
+            </div>
           </div>
 
           <div className="w-full xl:max-w-[620px] xl:justify-self-end">
@@ -498,6 +649,31 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
           <p className="text-sm font-medium">{saveSuccess}</p>
         </div>
       ) : null}
+
+      {overdueTasks.length > 0 && (
+        <div className="rounded-2xl border border-red-200/70 bg-red-50/70 px-4 py-3 flex items-center justify-between gap-4 dark:border-red-900 dark:bg-red-950/30">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+            <p className="text-sm text-red-700 dark:text-red-300">
+              <span className="font-semibold">{overdueTasks.length}</span>{" "}
+              {overdueTasks.length === 1 ? "tarea vencida" : "tareas vencidas"} sin reprogramar
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleRescheduleOverdue()}
+            disabled={aiLoading || aiPlanLoading}
+            className="shrink-0 flex items-center gap-1.5 rounded-xl border border-red-300 bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-700 transition-all hover:bg-red-200 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+          >
+            {aiLoading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <RefreshCcw className="w-3.5 h-3.5" />
+            )}
+            Reprogramar
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="app-card p-4">
@@ -582,7 +758,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                           )}
                           {task.due_date && (
                             <span className="text-xs text-muted-foreground">
-                              {new Date(task.due_date).toLocaleDateString()}
+                              {formatDueDate(task.due_date)}
                             </span>
                           )}
                         </div>
@@ -688,7 +864,7 @@ export function TasksAiShell({ initialTasks }: TasksAiShellProps) {
                           )}
                           {task.due_date && (
                             <span className="text-xs text-muted-foreground">
-                              {new Date(task.due_date).toLocaleDateString()}
+                              {formatDueDate(task.due_date)}
                             </span>
                           )}
                         </div>

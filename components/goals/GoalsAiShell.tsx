@@ -145,7 +145,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
             return {
                 title: "Convierte objetivos en sesiones",
                 text: `Tienes ${academicGoals.length} objetivo${academicGoals.length === 1 ? "" : "s"
-                    } acadÃ©mico${academicGoals.length === 1 ? "" : "s"
+                    } académico${academicGoals.length === 1 ? "" : "s"
                     } activo${academicGoals.length === 1 ? "" : "s"} listo${academicGoals.length === 1 ? "" : "s"
                     } para planificar.`,
                 style: "border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300",
@@ -154,14 +154,14 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
 
         if (activeGoals.length > 0) {
             return {
-                title: "MantÃ©n el seguimiento",
+                title: "Mantén el seguimiento",
                 text: "Actualiza el progreso de tus objetivos para que la IA pueda priorizar mejor tu semana.",
                 style: "border-sky-100 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-300",
             };
         }
 
         return {
-            title: "Empieza por tu prÃ³ximo hito",
+            title: "Empieza por tu próximo hito",
             text: "Crea tu primer objetivo para que TaskIA pueda ayudarte a convertirlo en progreso real.",
             style: "border-violet-100 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-300",
         };
@@ -176,7 +176,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
         setAiError("");
 
         if (academicGoals.length === 0) {
-            setAiError("No tienes ningÃºn objetivo acadÃ©mico activo.");
+            setAiError("No tienes ningún objetivo académico activo.");
             return;
         }
 
@@ -201,7 +201,6 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
             }
 
             if (res?.data) {
-                console.log('Sesiones sugeridas:', res.data);
                 const selectedGoal = academicGoals.find((goal) => goal.id === goalId);
                 setSelectedPlanGoal(selectedGoal ?? null);
                 setPlanGoalTitle(selectedGoal?.title || '');
@@ -269,10 +268,6 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
 
             showSuccess(res.message || "Objetivo priorizado correctamente.");
             router.refresh();
-            
-            // Limpiar el mensaje de Ã©xito despuÃ©s de 3 segundos
-            setTimeout(() => setSaveSuccess(""), 3000);
-            
         } catch (error) {
             console.error('Error priorizando objetivo:', error);
             setAiError("Error al priorizar objetivo.");
@@ -295,10 +290,6 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
 
             showSuccess(res.message || "Tareas repartidas correctamente.");
             router.refresh();
-            
-            // Limpiar el mensaje de Ã©xito despuÃ©s de 3 segundos
-            setTimeout(() => setSaveSuccess(""), 3000);
-            
         } catch (error) {
             console.error('Error repartiendo tareas semanales:', error);
             setAiError("Error al repartir tareas semanales.");
@@ -388,7 +379,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                         <div className="min-w-0">
                             <p className="text-sm font-semibold text-foreground">Asistente IA</p>
                             <p className="mb-2 text-xs text-muted-foreground">
-                                Sugerencias rÃ¡pidas para tus objetivos
+                                Sugerencias rápidas para tus objetivos
                             </p>
 
                             <div className={`rounded-xl border px-3 py-2.5 ${suggestion.style}`}>
@@ -583,8 +574,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                 type="button"
                                 onClick={handleSaveSuggestedSessions}
                                 disabled={savingTasks}
-                                className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center gap-2"
-                                
+                                className="brand-gradient px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:brightness-110 disabled:opacity-60 flex items-center gap-2"
                             >
                                 {savingTasks ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                                 {savingTasks ? "Guardando..." : "Guardar como tareas"}
@@ -645,9 +635,9 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                 };
 
                                 const categoryLabels = {
-                                    academic: "AcadÃ©mico",
+                                    academic: "Académico",
                                     personal: "Personal",
-                                    habit: "HÃ¡bito"
+                                    habit: "Hábito"
                                 };
 
                                 const currentPriority = goal.priority || 'medium';
@@ -686,27 +676,33 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                                     </span>
                                                     {goal.due_date && (
                                                         <span>
-                                                            LÃ­mite: {new Date(goal.due_date).toLocaleDateString()}
+                                                            Límite: {new Date(goal.due_date).toLocaleDateString()}
                                                         </span>
                                                     )}
                                                 </div>
 
                                                 <div className="flex gap-2">
                                                     <button
-                                                        onClick={() => handleSelectGoalToPrioritize(goal.id, 'down')}
-                                                        className="flex-1 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
+                                                        type="button"
+                                                        onClick={() => void handleSelectGoalToPrioritize(goal.id, 'down')}
+                                                        disabled={aiLoading}
+                                                        className="flex-1 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         <span className="mr-1">-</span> Bajar
                                                     </button>
                                                     <button
-                                                        onClick={() => handleSelectGoalToPrioritize(goal.id, 'auto')}
-                                                        className="flex-1 px-3 py-2 rounded-lg border border-emerald-200 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-all"
+                                                        type="button"
+                                                        onClick={() => void handleSelectGoalToPrioritize(goal.id, 'auto')}
+                                                        disabled={aiLoading}
+                                                        className="flex-1 px-3 py-2 rounded-lg border border-emerald-200 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         <span className="mr-1">Auto</span> IA
                                                     </button>
                                                     <button
-                                                        onClick={() => handleSelectGoalToPrioritize(goal.id, 'up')}
-                                                        className="flex-1 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
+                                                        type="button"
+                                                        onClick={() => void handleSelectGoalToPrioritize(goal.id, 'up')}
+                                                        disabled={aiLoading}
+                                                        className="flex-1 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         <span className="mr-1">+</span> Subir
                                                     </button>
@@ -750,7 +746,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                     Seleccionar objetivo para sesiones
                                 </h3>
                                 <p className="mt-0.5 text-sm text-muted-foreground">
-                                    Elige quÃ© objetivo acadÃ©mico quieres convertir en sesiones de estudio
+                                    Elige qué objetivo académico quieres convertir en sesiones de estudio
                                 </p>
                             </div>
 
@@ -786,8 +782,10 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                 return (
                                     <button
                                         key={goal.id}
-                                        onClick={() => handleSelectGoalForSessions(goal.id)}
-                                        className="w-full rounded-2xl border border-border bg-muted/30 p-4 text-left transition-all hover:border-emerald-400/60 hover:bg-card"
+                                        type="button"
+                                        onClick={() => void handleSelectGoalForSessions(goal.id)}
+                                        disabled={aiLoading}
+                                        className="w-full rounded-2xl border border-border bg-muted/30 p-4 text-left transition-all hover:border-emerald-400/60 hover:bg-card disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="min-w-0 flex-1">
@@ -796,7 +794,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                                         {goal.title}
                                                     </h4>
                                                     <span className="shrink-0 rounded-full px-2 py-1 text-xs font-medium border bg-emerald-100 text-emerald-700 border-emerald-200">
-                                                        AcadÃ©mico
+                                                        Académico
                                                     </span>
                                                     <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium border ${priorityColors[currentPriority]}`}>
                                                         {priorityLabels[currentPriority]}
@@ -818,7 +816,7 @@ export function GoalsAiShell({ initialGoals }: GoalsAiShellProps) {
                                                     </span>
                                                     {goal.due_date && (
                                                         <span>
-                                                            LÃ­mite: {new Date(goal.due_date).toLocaleDateString()}
+                                                            Límite: {new Date(goal.due_date).toLocaleDateString()}
                                                         </span>
                                                     )}
                                                 </div>

@@ -4,15 +4,18 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { useSidebar } from '@/components/layout/sidebar-context'
 import { PageTransition } from '@/components/ui/page-transition'
+import { GoogleReconnectBanner } from '@/components/layout/GoogleReconnectBanner'
 
 export function DashboardShell({
   children,
   avatarUrl,
   userName,
+  googleAuthError,
 }: {
   children: React.ReactNode
   avatarUrl: string | null
   userName: string
+  googleAuthError?: string | null
 }) {
   const { collapsed } = useSidebar()
 
@@ -28,6 +31,7 @@ export function DashboardShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header avatarUrl={avatarUrl} userName={userName} />
+        {googleAuthError && <GoogleReconnectBanner />}
         <main className="flex-1 page-shell">
           <PageTransition className="app-page">{children}</PageTransition>
         </main>

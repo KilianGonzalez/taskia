@@ -17,6 +17,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import esLocale from '@fullcalendar/core/locales/es'
 import { Lock } from 'lucide-react'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
+import { GoogleReconnectBanner } from '@/components/layout/GoogleReconnectBanner'
 import { getGoogleCalendarEventsInRange, updateFlexibleTask } from '@/app/actions'
 import type {
   CalendarEvent,
@@ -27,6 +28,7 @@ import type {
 interface CalendarProps {
   initialEvents: CalendarEvent[]
   flexibleTasks: CalendarTask[]
+  googleInitiallyConnected?: boolean
   onTaskUpdated?: (params: {
     taskId: string
     dueDate: string
@@ -110,6 +112,7 @@ export default function CalendarView({
   initialEvents,
   flexibleTasks,
   onTaskUpdated,
+  googleInitiallyConnected = true,
 }: CalendarProps) {
   const router = useRouter()
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null)
@@ -129,6 +132,7 @@ export default function CalendarView({
     [initialEvents]
   )
   const [googleEvents, setGoogleEvents] = useState<CalendarEvent[]>(initialGoogleEvents)
+  const [googleDisconnected, setGoogleDisconnected] = useState(false)
   const latestGoogleRequestId = useRef(0)
   const lastLoadedGoogleRangeKey = useRef<string | null>(null)
 
@@ -239,8 +243,15 @@ export default function CalendarView({
         return
       }
 
-      if (result.status === 'ok' || result.status === 'disconnected') {
+      if (result.status === 'ok') {
         setGoogleEvents(result.events)
+        setGoogleDisconnected(false)
+        return
+      }
+
+      if (result.status === 'disconnected') {
+        setGoogleEvents([])
+        setGoogleDisconnected(true)
         return
       }
 
@@ -533,7 +544,7 @@ export default function CalendarView({
         console.log(`Tarea sin hora, asignando 9:00 AM: ${taskStart.toISOString()}`)
       } else {
         taskStart = new Date(dueDate)
-        console.log(`Tarea con hora especÃ­fica: ${taskStart.toISOString()}`)
+        console.log(`Tarea con hora específica: ${taskStart.toISOString()}`)
       }
 
       const taskEnd = new Date(taskStart.getTime() + duration * 60000)
@@ -676,6 +687,11 @@ export default function CalendarView({
 
   return (
     <>
+      {googleDisconnected && googleInitiallyConnected && (
+        <div className="mb-3">
+          <GoogleReconnectBanner />
+        </div>
+      )}
       <div className="h-full w-full px-2 calendar-wrapper">
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}

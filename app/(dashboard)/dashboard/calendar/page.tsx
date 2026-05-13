@@ -18,11 +18,13 @@ export default async function CalendarPage() {
   ]);
 
   const allEvents = [...scheduledBlocks, ...googleCalendarResult.events];
+  const googleInitiallyConnected = googleCalendarResult.status === 'ok';
 
   return (
     <CalendarAiShell
       initialEvents={allEvents}
       flexibleTasks={flexibleTasks}
+      googleInitiallyConnected={googleInitiallyConnected}
     />
   );
 }

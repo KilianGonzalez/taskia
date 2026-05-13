@@ -18,6 +18,7 @@ import { isHighTaskPriority } from '@/lib/tasks/priority'
 type CalendarAiShellProps = {
   initialEvents: CalendarEvent[]
   flexibleTasks: CalendarTask[]
+  googleInitiallyConnected?: boolean
 }
 
 type CalendarWindow = {
@@ -498,6 +499,7 @@ function getChangeMetadata(change: AiChange) {
 export function CalendarAiShell({
   initialEvents,
   flexibleTasks,
+  googleInitiallyConnected = true,
 }: CalendarAiShellProps) {
   const router = useRouter()
   const [calendarTasks, setCalendarTasks] = useState<CalendarTask[]>(flexibleTasks)
@@ -668,7 +670,7 @@ export function CalendarAiShell({
       if (!currentTaskDate) {
         setFeedback({
           tone: 'error',
-          message: 'No pude leer la fecha actual de la tarea para mantener el mismo dÃ­a.',
+          message: 'No pude leer la fecha actual de la tarea para mantener el mismo día.',
         })
         return
       }
@@ -886,6 +888,11 @@ export function CalendarAiShell({
           }
 
           appliedChanges += 1
+          continue
+        }
+
+        if (change.type === 'insert_break') {
+          appliedChanges += 1
         }
       }
 
@@ -1016,12 +1023,39 @@ export function CalendarAiShell({
         </div>
       ) : null}
 
+      {proposedChanges.length > 0 ? (
+        <div className="rounded-2xl border border-indigo-200/70 bg-indigo-50/70 px-4 py-3 flex items-center justify-between gap-4 dark:border-indigo-900 dark:bg-indigo-950/30">
+          <p className="text-sm text-indigo-700 dark:text-indigo-300">
+            {proposedChanges.length}{' '}
+            {proposedChanges.length === 1 ? 'cambio pendiente' : 'cambios pendientes'} en el plan
+          </p>
+          <button
+            onClick={() => void handleApplyPlan()}
+            disabled={isApplying}
+            className="brand-gradient px-4 py-2 rounded-xl text-white text-sm font-semibold transition-all hover:brightness-110 disabled:opacity-60 flex items-center gap-2"
+          >
+            {isApplying ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Aplicando...
+              </>
+            ) : (
+              'Aplicar plan'
+            )}
+          </button>
+        </div>
+      ) : null}
+
       <div className="grid flex-1 min-h-0 gap-4 xl:grid-cols-[1fr_360px]">
         <div className="app-card min-h-0 overflow-hidden">
           <CalendarView
             initialEvents={initialEvents}
             flexibleTasks={calendarTasks}
             onTaskUpdated={handleCalendarTaskUpdated}
+            googleInitiallyConnected={googleInitiallyConnected}
           />
         </div>
 
