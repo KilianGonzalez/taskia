@@ -135,6 +135,7 @@ export default function CalendarView({
   const [googleDisconnected, setGoogleDisconnected] = useState(false)
   const latestGoogleRequestId = useRef(0)
   const lastLoadedGoogleRangeKey = useRef<string | null>(null)
+  const [calendarError, setCalendarError] = useState<string | null>(null)
 
   const staticInitialEvents = useMemo(
     () => initialEvents.filter((event) => event.extendedProps?.source !== 'google'),
@@ -157,6 +158,12 @@ export default function CalendarView({
     },
     []
   )
+
+  useEffect(() => {
+    if (!calendarError) return
+    const timer = setTimeout(() => setCalendarError(null), 5000)
+    return () => clearTimeout(timer)
+  }, [calendarError])
 
   const hideLockHint = () => {
     if (lockHintTimerRef.current) {
@@ -327,11 +334,6 @@ export default function CalendarView({
     const previousTask = mergedTasks.find((task) => task.id === taskId)
     const previousDueDate = previousTask?.due_date
 
-    console.log('Tarea movida:', {
-      taskId,
-      newStart: nextDueDate,
-    })
-
     setTaskOverrides((currentOverrides) => ({
       ...currentOverrides,
       [taskId]: {
@@ -376,11 +378,10 @@ export default function CalendarView({
             dueDate: previousDueDate,
           })
         }
-        alert(`Error al mover tarea: ${result.error}`)
+        setCalendarError(`Error al mover tarea: ${result.error}`)
         dropInfo.revert()
         return
       }
-      console.log('Tarea movida exitosamente')
     } catch (error) {
       setTaskOverrides((currentOverrides) => {
         const currentOverride = currentOverrides[taskId]
@@ -409,7 +410,7 @@ export default function CalendarView({
         })
       }
       console.error('Error moviendo tarea:', error)
-      alert('Error al mover tarea')
+      setCalendarError('Error al mover tarea')
       dropInfo.revert()
     }
   }
@@ -437,13 +438,6 @@ export default function CalendarView({
     const previousTask = mergedTasks.find((task) => task.id === taskId)
     const previousDueDate = previousTask?.due_date
     const previousDuration = previousTask?.estimated_duration_min
-
-    console.log('Tarea redimensionada:', {
-      taskId,
-      newStart: nextDueDate,
-      newEnd: formatLocalDateTime(newEnd),
-      duration: nextDuration,
-    })
 
     setTaskOverrides((currentOverrides) => ({
       ...currentOverrides,
@@ -481,12 +475,10 @@ export default function CalendarView({
             estimatedDurationMin: previousDuration,
           })
         }
-        alert(`Error al cambiar duracion: ${result.error}`)
+        setCalendarError(`Error al cambiar duración: ${result.error}`)
         resizeInfo.revert()
         return
       }
-
-      console.log('Duracion cambiada exitosamente')
     } catch (error) {
       setTaskOverrides((currentOverrides) => ({
         ...currentOverrides,
@@ -503,17 +495,14 @@ export default function CalendarView({
           estimatedDurationMin: previousDuration,
         })
       }
-      console.error('Error cambiando duracion:', error)
-      alert('Error al cambiar duracion')
+      console.error('Error cambiando duración:', error)
+      setCalendarError('Error al cambiar duración')
       resizeInfo.revert()
     }
   }
 
   const taskEvents = useMemo<CalendarEvent[]>(() => {
-    console.log('Flexible tasks recibidas:', mergedTasks)
-
     const filteredTasks = mergedTasks.filter((task) => !task.completed && task.due_date)
-    console.log('Tareas filtradas (no completadas y con due_date):', filteredTasks.length)
 
     const events: Array<CalendarEvent | null> = filteredTasks.map(
       (task): CalendarEvent | null => {
@@ -522,13 +511,6 @@ export default function CalendarView({
         return null
       }
       const duration = task.estimated_duration_min || 60
-
-      console.log(`Procesando tarea "${task.title}":`, {
-        due_date: task.due_date,
-        dueDate: dueDate.toISOString(),
-        hours: dueDate.getHours(),
-        minutes: dueDate.getMinutes(),
-      })
 
       let taskStart: Date
       if (dueDate.getHours() === 0 && dueDate.getMinutes() === 0) {
@@ -541,20 +523,12 @@ export default function CalendarView({
           0,
           0
         )
-        console.log(`Tarea sin hora, asignando 9:00 AM: ${taskStart.toISOString()}`)
       } else {
         taskStart = new Date(dueDate)
-        console.log(`Tarea con hora específica: ${taskStart.toISOString()}`)
       }
 
       const taskEnd = new Date(taskStart.getTime() + duration * 60000)
       const isFromAI = Boolean(task.notes && task.notes.includes('Creada por IA'))
-
-      console.log(`Evento creado para "${task.title}":`, {
-        start: taskStart.toISOString(),
-        end: taskEnd.toISOString(),
-        isFromAI,
-      })
 
       return {
         id: `task_${task.id}`,
@@ -580,12 +554,9 @@ export default function CalendarView({
       }
       }
     )
-    const normalizedEvents = events.filter(
+    return events.filter(
       (event): event is CalendarEvent => event !== null
     )
-
-    console.log('Eventos de tareas creados:', normalizedEvents.length)
-    return normalizedEvents
   }, [mergedTasks])
 
   const allEvents = useMemo(() => {
@@ -599,20 +570,7 @@ export default function CalendarView({
       startEditable: false,
     }))
 
-    const combined = [...nonEditableInitialEvents, ...taskEvents]
-    console.log('Eventos del calendario:', {
-      initialEvents: staticInitialEvents.length + googleEvents.length,
-      taskEvents: taskEvents.length,
-      total: combined.length,
-      taskEventsDetails: taskEvents.map((event) => ({
-        id: event.id,
-        title: event.title,
-        start: event.start,
-        end: event.end,
-        isFromAI: event.extendedProps?.isFromAI,
-      })),
-    })
-    return combined
+    return [...nonEditableInitialEvents, ...taskEvents]
   }, [googleEvents, staticInitialEvents, taskEvents])
 
   const renderEventContent = (eventInfo: EventContentArg) => {
@@ -692,6 +650,11 @@ export default function CalendarView({
           <GoogleReconnectBanner />
         </div>
       )}
+      {calendarError ? (
+        <div className="mb-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+          {calendarError}
+        </div>
+      ) : null}
       <div className="h-full w-full px-2 calendar-wrapper">
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}

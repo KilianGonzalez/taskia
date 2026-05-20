@@ -449,6 +449,7 @@ export default function OnboardingStep3() {
   const [objetivos, setObjetivos] = useState<Objetivo[]>(getStoredObjetivos)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [onboardingError, setOnboardingError] = useState<string | null>(null)
 
   useEffect(() => {
     localStorage.setItem(
@@ -524,7 +525,7 @@ export default function OnboardingStep3() {
         .upsert(profilePayload, { onConflict: 'id' })
 
       if (profileError) {
-        alert('No se pudo guardar el perfil: ' + profileError.message)
+        setOnboardingError('No se pudo guardar el perfil: ' + profileError.message)
         setSaving(false)
         return
       }
@@ -572,9 +573,7 @@ export default function OnboardingStep3() {
                 )
             }
 
-            alert(
-              'No se pudieron guardar los compromisos: ' + blocksError.message
-            )
+            setOnboardingError('No se pudieron guardar los compromisos: ' + blocksError.message)
             setSaving(false)
             return
           }
@@ -602,7 +601,7 @@ export default function OnboardingStep3() {
           .insert(goalsPayload)
 
         if (goalsError) {
-          alert('No se pudieron guardar los objetivos: ' + goalsError.message)
+          setOnboardingError('No se pudieron guardar los objetivos: ' + goalsError.message)
           setSaving(false)
           return
         }
@@ -615,7 +614,7 @@ export default function OnboardingStep3() {
       router.refresh()
       router.push('/dashboard')
     } catch {
-      alert('Ha ocurrido un error al finalizar el onboarding.')
+      setOnboardingError('Ha ocurrido un error al finalizar el onboarding.')
       setSaving(false)
     }
   }
@@ -728,6 +727,12 @@ export default function OnboardingStep3() {
             </p>
           </div>
         </div>
+
+        {onboardingError ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+            {onboardingError}
+          </div>
+        ) : null}
 
         <div className="flex gap-3">
           <button

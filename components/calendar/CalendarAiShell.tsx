@@ -446,45 +446,6 @@ function buildConflicts(events: CalendarEvent[], tasks: CalendarTask[]) {
   return conflicts.slice(0, 3)
 }
 
-function buildTodaySummary(events: CalendarEvent[], tasks: CalendarTask[]) {
-  const today = new Date()
-  const windows = [
-    ...events.map(getEventWindow).filter(Boolean),
-    ...tasks.map(getTaskWindow).filter(Boolean),
-  ]
-    .filter((window): window is CalendarWindow => Boolean(window))
-    .filter((window) => isSameCalendarDay(window.start, today))
-    .sort((firstWindow, secondWindow) => firstWindow.start.getTime() - secondWindow.start.getTime())
-
-  const mergedWindows: CalendarWindow[] = []
-
-  windows.forEach((window) => {
-    const lastMergedWindow = mergedWindows[mergedWindows.length - 1]
-    if (!lastMergedWindow || window.start > lastMergedWindow.end) {
-      mergedWindows.push({ ...window })
-      return
-    }
-
-    if (window.end > lastMergedWindow.end) {
-      lastMergedWindow.end = window.end
-    }
-  })
-
-  const occupiedMinutes = mergedWindows.reduce((totalMinutes, window) => {
-    return totalMinutes + (window.end.getTime() - window.start.getTime()) / (1000 * 60)
-  }, 0)
-
-  const freeHours = Math.max(0, Math.round((12 * 60 - occupiedMinutes) / 60))
-
-  return {
-    freeHours,
-    pendingTasks: tasks.filter((task) => !task.completed).length,
-    urgentGoals: tasks.filter(
-      (task) => !task.completed && isHighTaskPriority(task.priority)
-    ).length,
-  }
-}
-
 function getChangeMetadata(change: AiChange) {
   return (change.metadata ?? {}) as {
     operation?: string
@@ -509,17 +470,11 @@ export function CalendarAiShell({
     buildSuggestions(flexibleTasks)
   )
   const [isApplying, setIsApplying] = useState(false)
-  const [isReplanning, setIsReplanning] = useState(false)
   const [isProcessingCommand, setIsProcessingCommand] = useState(false)
   const [feedback, setFeedback] = useState<{
     tone: 'success' | 'error'
     message: string
   } | null>(null)
-
-  const todaySummary = useMemo(
-    () => buildTodaySummary(initialEvents, calendarTasks),
-    [calendarTasks, initialEvents]
-  )
 
   const conflicts = useMemo(
     () => buildConflicts(initialEvents, calendarTasks),
@@ -811,7 +766,7 @@ export function CalendarAiShell({
           await handleAddBreak(prompt)
           break
         case 'replan_day':
-          await handleReplanDay()
+          handleReplanDay()
           break
         default:
           setFeedback({
@@ -927,22 +882,16 @@ export function CalendarAiShell({
     }
   }
 
-  async function handleReplanDay() {
-    setIsReplanning(true)
-
-    try {
-      const nextSuggestions = buildSuggestions(calendarTasks)
-      setSuggestions(nextSuggestions)
-      setFeedback({
-        tone: 'success',
-        message:
-          nextSuggestions.length > 0
-            ? 'He recalculado sugerencias en función de tus tareas actuales.'
-            : 'Hoy no veo ajustes claros que merezcan replanificación.',
-      })
-    } finally {
-      setIsReplanning(false)
-    }
+  function handleReplanDay() {
+    const nextSuggestions = buildSuggestions(calendarTasks)
+    setSuggestions(nextSuggestions)
+    setFeedback({
+      tone: 'success',
+      message:
+        nextSuggestions.length > 0
+          ? 'He recalculado sugerencias en función de tus tareas actuales.'
+          : 'Hoy no veo ajustes claros que merezcan replanificación.',
+    })
   }
 
   async function handleAcceptSuggestion(suggestion: AiSuggestion) {

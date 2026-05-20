@@ -22,11 +22,25 @@
 # Environment Variables & Secrets
 # ------------------------------------------------------------------------------
 .env
+.env.*
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 .env*.local
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+service-role*.json
+service_account*.json
+google-credentials*.json
+credentials*.json
+secrets*.json
 
 # ------------------------------------------------------------------------------
 # Debug & Logs
@@ -35,6 +49,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
 # ------------------------------------------------------------------------------
 # System Files (Mac/Windows/Linux)
@@ -51,12 +66,40 @@ Thumbs.db
 # ------------------------------------------------------------------------------
 supabase/.temp
 supabase/.branches
+supabase_full_dump.sql
+supabase_schema*.sql
+*_dump.sql
+*dump*.sql
+*.dump
+*.backup
+*.bak
+*.sqlite
+*.sqlite3
+*.db
 
 # ------------------------------------------------------------------------------
 # TypeScript
 # ------------------------------------------------------------------------------
 *.tsbuildinfo
 next-env.d.ts
+
+# ------------------------------------------------------------------------------
+# Local Audits, Security Reports & Private Exports
+# ------------------------------------------------------------------------------
+/auditoria/
+/audit/
+/audits/
+security-report*
+npm-audit*.json
+npm-audit*.txt
+supabase_*_audit.csv
+supabase_public_policies.csv
+supabase_indexes.csv
+supabase_foreign_keys.csv
+supabase_rls_status.csv
+supabase_storage_policies.csv
+supabase_buckets.csv
+supabase_tables.csv
 
 # ------------------------------------------------------------------------------
 # MD Files
