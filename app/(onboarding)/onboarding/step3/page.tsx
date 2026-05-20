@@ -22,7 +22,7 @@ const STEP3_KEY = 'taskia_onboarding_step3'
 const steps = [
   { label: 'Tu semana', sub: 'Configura tu horario', icon: Clock },
   { label: 'Compromisos fijos', sub: 'Clases y actividades', icon: Calendar },
-  { label: 'Objetivos', sub: 'ExÃ¡menes y entregas', icon: Target },
+  { label: 'Objetivos', sub: 'Exámenes y entregas', icon: Target },
 ]
 
 type Objetivo = {
@@ -217,7 +217,7 @@ function AddObjetivoForm({
 
       <div>
         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
-          TÃ­tulo
+          Título
         </p>
         <input
           type="text"
@@ -289,7 +289,7 @@ function AddObjetivoForm({
           className="py-2 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-40"
           style={{ background: 'linear-gradient(90deg, #14b8a6, #0f766e)' }}
         >
-          AÃ±adir
+          Añadir
         </button>
       </div>
     </div>
@@ -449,6 +449,7 @@ export default function OnboardingStep3() {
   const [objetivos, setObjetivos] = useState<Objetivo[]>(getStoredObjetivos)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [onboardingError, setOnboardingError] = useState<string | null>(null)
 
   useEffect(() => {
     localStorage.setItem(
@@ -524,7 +525,7 @@ export default function OnboardingStep3() {
         .upsert(profilePayload, { onConflict: 'id' })
 
       if (profileError) {
-        alert('No se pudo guardar el perfil: ' + profileError.message)
+        setOnboardingError('No se pudo guardar el perfil: ' + profileError.message)
         setSaving(false)
         return
       }
@@ -572,9 +573,7 @@ export default function OnboardingStep3() {
                 )
             }
 
-            alert(
-              'No se pudieron guardar los compromisos: ' + blocksError.message
-            )
+            setOnboardingError('No se pudieron guardar los compromisos: ' + blocksError.message)
             setSaving(false)
             return
           }
@@ -585,9 +584,9 @@ export default function OnboardingStep3() {
         const goalsPayload = objetivos.map((o) => ({
           user_id: user.id,
           title: o.titulo,
-          description: `${o.tipo === 'examen' ? 'Examen' : 'Entrega'} Â· ${
+          description: `${o.tipo === 'examen' ? 'Examen' : 'Entrega'} · ${
             o.materia
-          } Â· Prioridad ${o.prioridad}`,
+          } · Prioridad ${o.prioridad}`,
           category: 'academic',
           current_value: 0,
           target_value: 1,
@@ -602,7 +601,7 @@ export default function OnboardingStep3() {
           .insert(goalsPayload)
 
         if (goalsError) {
-          alert('No se pudieron guardar los objetivos: ' + goalsError.message)
+          setOnboardingError('No se pudieron guardar los objetivos: ' + goalsError.message)
           setSaving(false)
           return
         }
@@ -615,7 +614,7 @@ export default function OnboardingStep3() {
       router.refresh()
       router.push('/dashboard')
     } catch {
-      alert('Ha ocurrido un error al finalizar el onboarding.')
+      setOnboardingError('Ha ocurrido un error al finalizar el onboarding.')
       setSaving(false)
     }
   }
@@ -638,10 +637,10 @@ export default function OnboardingStep3() {
       <div className="w-full max-w-lg space-y-4 app-card-strong p-6">
         <div>
           <h2 className="text-xl font-bold text-foreground">
-            Tus objetivos prÃ³ximos
+            Tus objetivos próximos
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            AÃ±ade exÃ¡menes y entregas importantes para que TaskIA te ayude a
+            Añade exámenes y entregas importantes para que TaskIA te ayude a
             planificar
           </p>
         </div>
@@ -669,7 +668,7 @@ export default function OnboardingStep3() {
                     <p className="text-xs text-muted-foreground">
                       {o.materia}
                       {o.fecha &&
-                        ` Â· ${new Date(o.fecha).toLocaleDateString('es-ES', {
+                        ` · ${new Date(o.fecha).toLocaleDateString('es-ES', {
                           day: 'numeric',
                           month: 'short',
                         })}`}
@@ -712,7 +711,7 @@ export default function OnboardingStep3() {
             className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border px-4 py-2.5 text-sm font-medium text-primary transition-all hover:bg-muted/60"
           >
             <Plus className="h-4 w-4" />
-            AÃ±adir objetivo
+            Añadir objetivo
           </button>
         )}
 
@@ -720,14 +719,20 @@ export default function OnboardingStep3() {
           <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
           <div>
             <p className="text-sm font-semibold text-orange-700">
-              La IA te ayudarÃ¡
+              La IA te ayudará
             </p>
             <p className="mt-0.5 text-xs text-orange-500">
-              TaskIA usarÃ¡ estos objetivos para sugerirte sesiones de estudio y
-              optimizar tu planificaciÃ³n automÃ¡ticamente.
+              TaskIA usará estos objetivos para sugerirte sesiones de estudio y
+              optimizar tu planificación automáticamente.
             </p>
           </div>
         </div>
+
+        {onboardingError ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+            {onboardingError}
+          </div>
+        ) : null}
 
         <div className="flex gap-3">
           <button
@@ -736,7 +741,7 @@ export default function OnboardingStep3() {
             disabled={saving}
             className="rounded-2xl border border-border px-5 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/60 disabled:opacity-60"
           >
-            Configurar despuÃ©s
+            Configurar después
           </button>
 
           <button

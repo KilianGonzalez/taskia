@@ -12,12 +12,14 @@ import {
   createTasksFromSplitTask,
   splitTaskWithAI,
   updateFlexibleTask,
+  parseNaturalLanguageTask,
 } from '@/app/actions'
 import { isHighTaskPriority } from '@/lib/tasks/priority'
 
 type CalendarAiShellProps = {
   initialEvents: CalendarEvent[]
   flexibleTasks: CalendarTask[]
+  googleInitiallyConnected?: boolean
 }
 
 type CalendarWindow = {
@@ -444,45 +446,6 @@ function buildConflicts(events: CalendarEvent[], tasks: CalendarTask[]) {
   return conflicts.slice(0, 3)
 }
 
-function buildTodaySummary(events: CalendarEvent[], tasks: CalendarTask[]) {
-  const today = new Date()
-  const windows = [
-    ...events.map(getEventWindow).filter(Boolean),
-    ...tasks.map(getTaskWindow).filter(Boolean),
-  ]
-    .filter((window): window is CalendarWindow => Boolean(window))
-    .filter((window) => isSameCalendarDay(window.start, today))
-    .sort((firstWindow, secondWindow) => firstWindow.start.getTime() - secondWindow.start.getTime())
-
-  const mergedWindows: CalendarWindow[] = []
-
-  windows.forEach((window) => {
-    const lastMergedWindow = mergedWindows[mergedWindows.length - 1]
-    if (!lastMergedWindow || window.start > lastMergedWindow.end) {
-      mergedWindows.push({ ...window })
-      return
-    }
-
-    if (window.end > lastMergedWindow.end) {
-      lastMergedWindow.end = window.end
-    }
-  })
-
-  const occupiedMinutes = mergedWindows.reduce((totalMinutes, window) => {
-    return totalMinutes + (window.end.getTime() - window.start.getTime()) / (1000 * 60)
-  }, 0)
-
-  const freeHours = Math.max(0, Math.round((12 * 60 - occupiedMinutes) / 60))
-
-  return {
-    freeHours,
-    pendingTasks: tasks.filter((task) => !task.completed).length,
-    urgentGoals: tasks.filter(
-      (task) => !task.completed && isHighTaskPriority(task.priority)
-    ).length,
-  }
-}
-
 function getChangeMetadata(change: AiChange) {
   return (change.metadata ?? {}) as {
     operation?: string
@@ -498,6 +461,7 @@ function getChangeMetadata(change: AiChange) {
 export function CalendarAiShell({
   initialEvents,
   flexibleTasks,
+  googleInitiallyConnected = true,
 }: CalendarAiShellProps) {
   const router = useRouter()
   const [calendarTasks, setCalendarTasks] = useState<CalendarTask[]>(flexibleTasks)
@@ -506,17 +470,11 @@ export function CalendarAiShell({
     buildSuggestions(flexibleTasks)
   )
   const [isApplying, setIsApplying] = useState(false)
-  const [isReplanning, setIsReplanning] = useState(false)
   const [isProcessingCommand, setIsProcessingCommand] = useState(false)
   const [feedback, setFeedback] = useState<{
     tone: 'success' | 'error'
     message: string
   } | null>(null)
-
-  const todaySummary = useMemo(
-    () => buildTodaySummary(initialEvents, calendarTasks),
-    [calendarTasks, initialEvents]
-  )
 
   const conflicts = useMemo(
     () => buildConflicts(initialEvents, calendarTasks),
@@ -668,7 +626,7 @@ export function CalendarAiShell({
       if (!currentTaskDate) {
         setFeedback({
           tone: 'error',
-          message: 'No pude leer la fecha actual de la tarea para mantener el mismo dÃ­a.',
+          message: 'No pude leer la fecha actual de la tarea para mantener el mismo día.',
         })
         return
       }
@@ -706,42 +664,44 @@ export function CalendarAiShell({
   }
 
   async function handleCreateBlock(prompt: string) {
-    const title = extractQuotedText(prompt)
-    const parsedTime = parseTime(prompt)
-    const duration = parseDuration(prompt) ?? 60
+    const parsed = await parseNaturalLanguageTask(prompt)
 
-    if (!title) {
-      setFeedback({
-        tone: 'error',
-        message: 'Para crear una tarea necesito que indiques el título entre comillas.',
-      })
+    if ('error' in parsed) {
+      setFeedback({ tone: 'error', message: parsed.error })
       return
     }
 
-    const dueDate = parsedTime
-      ? getNextOccurrence(parsedTime.hours, parsedTime.minutes, prompt)
-      : getNextOccurrence(9, 0, prompt)
+    const { title, date, time, durationMin, priority } = parsed.data
+
+    let dueDate: string
+    if (date && time) {
+      dueDate = `${date}T${time}:00`
+    } else if (date) {
+      dueDate = `${date}T09:00:00`
+    } else if (time) {
+      const [h, m] = time.split(':').map(Number)
+      dueDate = getNextOccurrence(h, m, prompt)
+    } else {
+      dueDate = getNextOccurrence(9, 0, prompt)
+    }
 
     const result = await createTask({
       title,
       category: 'general',
       due_date: dueDate,
-      estimated_duration_min: duration,
-      priority: 'media',
+      estimated_duration_min: durationMin ?? 60,
+      priority: priority ?? 'media',
       notes: 'Creada por IA desde calendario',
     })
 
     if (result.error) {
-      setFeedback({
-        tone: 'error',
-        message: result.error,
-      })
+      setFeedback({ tone: 'error', message: result.error })
       return
     }
 
     setFeedback({
       tone: 'success',
-      message: `He creado "${title}" para ${formatDateTime(dueDate)} (${duration} min).`,
+      message: `He creado "${title}" para ${formatDateTime(dueDate)} (${durationMin ?? 60} min).`,
     })
     router.refresh()
   }
@@ -806,7 +766,7 @@ export function CalendarAiShell({
           await handleAddBreak(prompt)
           break
         case 'replan_day':
-          await handleReplanDay()
+          handleReplanDay()
           break
         default:
           setFeedback({
@@ -886,6 +846,11 @@ export function CalendarAiShell({
           }
 
           appliedChanges += 1
+          continue
+        }
+
+        if (change.type === 'insert_break') {
+          appliedChanges += 1
         }
       }
 
@@ -917,22 +882,16 @@ export function CalendarAiShell({
     }
   }
 
-  async function handleReplanDay() {
-    setIsReplanning(true)
-
-    try {
-      const nextSuggestions = buildSuggestions(calendarTasks)
-      setSuggestions(nextSuggestions)
-      setFeedback({
-        tone: 'success',
-        message:
-          nextSuggestions.length > 0
-            ? 'He recalculado sugerencias en función de tus tareas actuales.'
-            : 'Hoy no veo ajustes claros que merezcan replanificación.',
-      })
-    } finally {
-      setIsReplanning(false)
-    }
+  function handleReplanDay() {
+    const nextSuggestions = buildSuggestions(calendarTasks)
+    setSuggestions(nextSuggestions)
+    setFeedback({
+      tone: 'success',
+      message:
+        nextSuggestions.length > 0
+          ? 'He recalculado sugerencias en función de tus tareas actuales.'
+          : 'Hoy no veo ajustes claros que merezcan replanificación.',
+    })
   }
 
   async function handleAcceptSuggestion(suggestion: AiSuggestion) {
@@ -998,9 +957,9 @@ export function CalendarAiShell({
         onSubmit={handleSubmit}
         isLoading={isProcessingCommand}
         suggestions={[
-          "Mueve tarea 'Repasar historia' a las 16:00",
-          "Crear tarea 'Resumen de química' a las 10:00 por 45 minutos",
-          "Divide tarea 'Proyecto final'",
+          "Mueve tarea Repasar historia a las 16:00",
+          "Crea examen de química el jueves a las 10:00 durante 45 minutos",
+          "Divide tarea Proyecto final",
         ]}
       />
 
@@ -1016,12 +975,39 @@ export function CalendarAiShell({
         </div>
       ) : null}
 
+      {proposedChanges.length > 0 ? (
+        <div className="rounded-2xl border border-indigo-200/70 bg-indigo-50/70 px-4 py-3 flex items-center justify-between gap-4 dark:border-indigo-900 dark:bg-indigo-950/30">
+          <p className="text-sm text-indigo-700 dark:text-indigo-300">
+            {proposedChanges.length}{' '}
+            {proposedChanges.length === 1 ? 'cambio pendiente' : 'cambios pendientes'} en el plan
+          </p>
+          <button
+            onClick={() => void handleApplyPlan()}
+            disabled={isApplying}
+            className="brand-gradient px-4 py-2 rounded-xl text-white text-sm font-semibold transition-all hover:brightness-110 disabled:opacity-60 flex items-center gap-2"
+          >
+            {isApplying ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Aplicando...
+              </>
+            ) : (
+              'Aplicar plan'
+            )}
+          </button>
+        </div>
+      ) : null}
+
       <div className="grid flex-1 min-h-0 gap-4 xl:grid-cols-[1fr_360px]">
         <div className="app-card min-h-0 overflow-hidden">
           <CalendarView
             initialEvents={initialEvents}
             flexibleTasks={calendarTasks}
             onTaskUpdated={handleCalendarTaskUpdated}
+            googleInitiallyConnected={googleInitiallyConnected}
           />
         </div>
 

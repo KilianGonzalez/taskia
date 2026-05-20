@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [authMessage, setAuthMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
   const router = useRouter()
   const supabase = createClient()
@@ -23,7 +24,7 @@ export default function LoginPage() {
 
     if (tab === 'register') {
       if (!acceptTerms) {
-        alert('Debes aceptar los terminos y condiciones.')
+        setAuthMessage({ type: 'error', text: 'Debes aceptar los términos y condiciones.' })
         setLoading(false)
         return
       }
@@ -40,7 +41,7 @@ export default function LoginPage() {
       })
 
       if (error) {
-        alert('Error al registrarse: ' + error.message)
+        setAuthMessage({ type: 'error', text: 'Error al registrarse: ' + error.message })
         setLoading(false)
         return
       }
@@ -52,7 +53,7 @@ export default function LoginPage() {
         return
       }
 
-      alert('Registro exitoso. Revisa tu email para confirmar tu cuenta.')
+      setAuthMessage({ type: 'success', text: 'Registro exitoso. Revisa tu email para confirmar tu cuenta.' })
       setTab('login')
       setLoading(false)
       return
@@ -64,7 +65,7 @@ export default function LoginPage() {
     })
 
     if (error) {
-      alert('Error al iniciar sesion: ' + error.message)
+      setAuthMessage({ type: 'error', text: 'Error al iniciar sesión: ' + error.message })
       setLoading(false)
       return
     }
@@ -187,6 +188,16 @@ export default function LoginPage() {
                 <span>Acepto los terminos y condiciones.</span>
               </label>
             )}
+
+            {authMessage ? (
+              <div className={`rounded-xl border px-3 py-2.5 text-sm ${
+                authMessage.type === 'error'
+                  ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300'
+              }`}>
+                {authMessage.text}
+              </div>
+            ) : null}
 
             <button
               type="button"

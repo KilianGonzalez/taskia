@@ -71,11 +71,13 @@ export default async function DashboardLayout({
     redirect('/onboarding')
   }
 
-  const avatarUrl = getStoredGoogleIntegrationState(mergedPreferences).avatarUrl
+  const googleState = getStoredGoogleIntegrationState(mergedPreferences)
+  const avatarUrl = googleState.avatarUrl
+  const googleAuthError = googleState.lastSyncError ?? null
 
   return (
     <SidebarProvider>
-      <DashboardShell avatarUrl={avatarUrl} userName={resolvedName}>
+      <DashboardShell avatarUrl={avatarUrl} userName={resolvedName} googleAuthError={googleAuthError}>
         {children}
       </DashboardShell>
     </SidebarProvider>
