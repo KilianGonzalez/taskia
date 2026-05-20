@@ -37,6 +37,7 @@ export async function updateGoalProgress(goalId: string, newValue: number) {
     .from('goals')
     .select('target_value')
     .eq('id', goalId)
+    .eq('user_id', user.id)
     .single()
 
   const isCompleted = goal ? newValue >= goal.target_value : false

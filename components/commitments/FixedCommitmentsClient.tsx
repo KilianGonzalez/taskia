@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Activity,
   AlertCircle,
@@ -333,6 +333,13 @@ export function FixedCommitmentsClient({
   )
   const [showNewModal, setShowNewModal] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!deleteError) return
+    const timer = setTimeout(() => setDeleteError(null), 5000)
+    return () => clearTimeout(timer)
+  }, [deleteError])
 
   const totalWeeklyBlocks = useMemo(
     () => commitments.reduce((sum, commitment) => sum + commitment.days.length, 0),
@@ -367,7 +374,7 @@ export function FixedCommitmentsClient({
     setDeletingId(null)
 
     if (response?.error) {
-      window.alert(response.error)
+      setDeleteError(response.error)
       return
     }
 
@@ -403,6 +410,12 @@ export function FixedCommitmentsClient({
           onClose={() => setEditingCommitment(null)}
           onSaved={handleUpdated}
         />
+      ) : null}
+
+      {deleteError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+          {deleteError}
+        </div>
       ) : null}
 
       <div className="flex items-center justify-between">

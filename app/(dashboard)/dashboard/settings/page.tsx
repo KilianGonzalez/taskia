@@ -69,6 +69,7 @@ export default function SettingsPage() {
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
   const darkMode = mounted ? theme === 'dark' : false
   const [persistingTheme, setPersistingTheme] = useState(false)
+  const [settingsSaved, setSettingsSaved] = useState(false)
   const hasSyncedThemeFromProfile = useRef(false)
 
   const supabase = useMemo(
@@ -162,7 +163,8 @@ export default function SettingsPage() {
   }
 
   const handleSave = () => {
-    alert('Configuracion guardada')
+    setSettingsSaved(true)
+    setTimeout(() => setSettingsSaved(false), 3000)
   }
 
   return (
@@ -175,7 +177,7 @@ export default function SettingsPage() {
 
         <button onClick={handleSave} className="app-button-gradient flex items-center gap-2">
           <Save className="h-4 w-4" />
-          Guardar cambios
+          {settingsSaved ? 'Guardado' : 'Guardar cambios'}
         </button>
       </div>
 

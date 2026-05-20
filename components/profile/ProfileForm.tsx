@@ -37,6 +37,7 @@ export default function ProfileForm({ user, profile }: ProfileFormProps) {
   );
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const handleSave = async () => {
     setSaving(true);
@@ -58,9 +59,9 @@ export default function ProfileForm({ user, profile }: ProfileFormProps) {
     setSaving(false);
 
     if (error) {
-      alert("Error al guardar: " + error.message);
+      setSaveMessage({ type: 'error', text: 'Error al guardar: ' + error.message });
     } else {
-      alert("Perfil actualizado");
+      setSaveMessage({ type: 'success', text: 'Perfil actualizado correctamente.' });
     }
   };
 
@@ -89,7 +90,7 @@ export default function ProfileForm({ user, profile }: ProfileFormProps) {
 
       setAvatarUrl(data.publicUrl);
     } catch (error: unknown) {
-      alert("Error al subir la imagen: " + getErrorMessage(error));
+      setSaveMessage({ type: 'error', text: 'Error al subir la imagen: ' + getErrorMessage(error) });
     } finally {
       setUploading(false);
     }
@@ -141,6 +142,16 @@ export default function ProfileForm({ user, profile }: ProfileFormProps) {
           placeholder="Ej: Europe/Madrid"
         />
       </div>
+
+      {saveMessage ? (
+        <div className={`rounded-xl border px-3 py-2.5 text-sm ${
+          saveMessage.type === 'error'
+            ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300'
+            : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300'
+        }`}>
+          {saveMessage.text}
+        </div>
+      ) : null}
 
       <Button onClick={handleSave} disabled={saving || uploading}>
         {saving ? "Guardando..." : "Guardar cambios"}
