@@ -150,6 +150,49 @@ export async function toggleTask(taskId: string, completed: boolean) {
 
   if (error) return { error: error.message }
   await syncFlexibleTaskWithGoogleCalendar({ supabase, user, task: nextTask })
+
+  // Si la tarea está vinculada a un objetivo, actualizar su progreso automáticamente
+  const taskNotes = (existingTask as FlexibleTaskRow & { notes?: string | null }).notes
+  if (taskNotes) {
+    const goalIdMatch = taskNotes.match(/^Goal ID:\s*(.+)$/m)
+    const linkedGoalId = goalIdMatch?.[1]?.trim()
+
+    if (linkedGoalId) {
+      const { data: goalTasks } = await supabase
+        .from('flexible_tasks')
+        .select('id, completed')
+        .eq('user_id', user.id)
+        .ilike('notes', `%Goal ID: ${linkedGoalId}%`)
+
+      if (goalTasks && goalTasks.length > 0) {
+        const totalCount = goalTasks.length
+        const completedCount = goalTasks.filter((t) => Boolean(t.completed)).length
+
+        const { data: linkedGoal } = await supabase
+          .from('goals')
+          .select('target_value')
+          .eq('id', linkedGoalId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (linkedGoal) {
+          const newValue = Math.round((completedCount / totalCount) * linkedGoal.target_value)
+          await supabase
+            .from('goals')
+            .update({
+              current_value: newValue,
+              status: completedCount >= totalCount ? 'completed' : 'active',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', linkedGoalId)
+            .eq('user_id', user.id)
+
+          revalidatePath('/dashboard/goals')
+        }
+      }
+    }
+  }
+
   revalidatePath('/dashboard/tasks')
   revalidatePath('/dashboard/calendar')
   return { success: true }
