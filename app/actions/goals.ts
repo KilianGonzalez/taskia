@@ -240,6 +240,30 @@ export async function suggestGoalSessions(goalId: string) {
   }
 }
 
+export async function getTasksForGoal(goalId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data } = await supabase
+    .from('flexible_tasks')
+    .select('id, title, completed, completed_at, due_date, estimated_duration_min, notes, created_at')
+    .eq('user_id', user.id)
+    .ilike('notes', `%Goal ID: ${goalId}%`)
+    .order('created_at', { ascending: true })
+
+  return (data ?? []) as Array<{
+    id: string
+    title: string
+    completed: boolean | null
+    completed_at: string | null
+    due_date: string | null
+    estimated_duration_min: number | null
+    notes: string | null
+    created_at: string | null
+  }>
+}
+
 export async function createTasksFromSuggestedSessions(params: {
   goalId: string
   goalTitle: string

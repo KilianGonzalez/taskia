@@ -10,7 +10,7 @@ import {
   BookOpen, Heart, Zap, Calendar,
   Target, X, AlertCircle, Loader2, Trash2, CheckCircle2,
 } from "lucide-react"
-import { createGoal, deleteGoal, updateGoalProgress } from "@/app/actions"
+import { createGoal, deleteGoal, updateGoalProgress, toggleTask, getTasksForGoal } from "@/app/actions"
 
 // ── Tipos ──────────────────────────────────────────────
 export interface Goal {
@@ -235,6 +235,229 @@ function NewGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   )
 }
 
+// ── Tipos de tarea vinculada ───────────────────────────
+type GoalTask = {
+  id: string
+  title: string
+  completed: boolean | null
+  completed_at: string | null
+  due_date: string | null
+  estimated_duration_min: number | null
+  notes: string | null
+  created_at: string | null
+}
+
+// ── Modal Detalle Objetivo ─────────────────────────────
+function GoalDetailModal({ goal, onClose, onOpenProgressUpdate, onGoalValueUpdated }: {
+  goal: Goal
+  onClose: () => void
+  onOpenProgressUpdate: () => void
+  onGoalValueUpdated: (newValue: number) => void
+}) {
+  const [tasks, setTasks] = useState<GoalTask[]>([])
+  const [loadingTasks, setLoadingTasks] = useState(true)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
+
+  const config = categoryConfig[goal.category] || categoryConfig.academic
+  const CategoryIcon = config.icon
+  const progress = Math.min(100, Math.round((goal.current_value / goal.target_value) * 100))
+  const completedCount = tasks.filter((t) => Boolean(t.completed)).length
+
+  useEffect(() => {
+    getTasksForGoal(goal.id).then((data) => {
+      setTasks(data)
+      setLoadingTasks(false)
+    })
+  }, [goal.id])
+
+  const handleToggleTask = async (task: GoalTask) => {
+    const newCompleted = !Boolean(task.completed)
+    setTogglingId(task.id)
+
+    const updatedTasks = tasks.map((t) => t.id === task.id ? { ...t, completed: newCompleted } : t)
+    setTasks(updatedTasks)
+
+    const res = await toggleTask(task.id, newCompleted)
+
+    if (res.error) {
+      setTasks(tasks)
+    } else {
+      const done = updatedTasks.filter((t) => Boolean(t.completed)).length
+      const total = updatedTasks.length
+      if (total > 0) {
+        onGoalValueUpdated(Math.round((done / total) * goal.target_value))
+      }
+    }
+
+    setTogglingId(null)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-gray-900">
+
+        {/* Header con color de categoría */}
+        <div className={`relative shrink-0 overflow-hidden px-6 py-5 ${config.bg}`}>
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/20" />
+          <div className="absolute -bottom-6 -left-6 h-16 w-16 rounded-full bg-white/10" />
+          <div className="relative">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/30">
+                  <CategoryIcon className={`h-5 w-5 ${config.color}`} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{config.label}</p>
+                  <h2 className="text-base font-bold leading-tight text-gray-900 dark:text-white">{goal.title}</h2>
+                </div>
+              </div>
+              <button onClick={onClose} className="shrink-0 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {goal.description && (
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{goal.description}</p>
+            )}
+
+            {/* Barra de progreso */}
+            <div className="mt-4">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {goal.current_value} / {goal.target_value} {goal.unit}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {progress === 100 && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+                  <span className={`text-xs font-bold ${config.color}`}>{progress}%</span>
+                </div>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-white/40">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${config.progressColor}`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Cuerpo scrollable */}
+        <div className="flex-1 space-y-5 overflow-y-auto p-6">
+
+          {/* Metadatos */}
+          <div className="flex flex-wrap items-center gap-2">
+            {goal.due_date && (
+              <span className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                <Calendar className="h-3.5 w-3.5" />
+                Vence el {new Date(goal.due_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}
+              </span>
+            )}
+            {goal.streak && goal.streak > 0 ? (
+              <span className="flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-500 dark:bg-orange-950">
+                <Flame className="h-3.5 w-3.5" />{goal.streak} días de racha
+              </span>
+            ) : null}
+          </div>
+
+          {/* Botón actualizar progreso manualmente */}
+          <button
+            type="button"
+            onClick={onOpenProgressUpdate}
+            className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm transition-all hover:shadow-sm ${config.bg} ${config.border}`}
+          >
+            <div className="flex items-center gap-2">
+              <TrendingUp className={`h-4 w-4 ${config.color}`} />
+              <span className={`font-medium ${config.color}`}>Actualizar progreso manualmente</span>
+            </div>
+            <span className="text-gray-400">→</span>
+          </button>
+
+          {/* Lista de tareas */}
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                Tareas vinculadas
+              </h3>
+              {!loadingTasks && tasks.length > 0 && (
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  {completedCount} / {tasks.length} completadas
+                </span>
+              )}
+            </div>
+
+            {loadingTasks ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
+              </div>
+            ) : tasks.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-200 py-10 text-center dark:border-gray-700">
+                <Target className="mx-auto h-8 w-8 text-gray-200 dark:text-gray-700" />
+                <p className="mt-2 text-sm text-gray-400 dark:text-gray-500">Sin tareas vinculadas</p>
+                <p className="mt-1 text-xs text-gray-300 dark:text-gray-600">
+                  Usa el asistente de IA para generar sesiones de estudio
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {tasks.map((task, index) => {
+                  const isCompleted = Boolean(task.completed)
+                  const isToggling = togglingId === task.id
+                  return (
+                    <div
+                      key={task.id}
+                      className={`flex items-center gap-3 rounded-2xl border px-4 py-3 transition-all ${
+                        isCompleted
+                          ? 'border-emerald-100 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/20'
+                          : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTask(task)}
+                        disabled={isToggling}
+                        className="shrink-0 transition-colors disabled:opacity-50"
+                      >
+                        {isToggling ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
+                        ) : isCompleted ? (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        ) : (
+                          <div className="h-5 w-5 rounded-full border-2 border-gray-300 dark:border-gray-500" />
+                        )}
+                      </button>
+
+                      <div className="min-w-0 flex-1">
+                        <p className={`truncate text-sm font-medium ${
+                          isCompleted ? 'text-gray-400 line-through dark:text-gray-500' : 'text-gray-700 dark:text-gray-200'
+                        }`}>
+                          {task.title}
+                        </p>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500">Sesión {index + 1}</span>
+                          {task.estimated_duration_min && (
+                            <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                              · {task.estimated_duration_min} min
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {isCompleted && (
+                        <span className="shrink-0 text-xs font-semibold text-emerald-600 dark:text-emerald-400">✓</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Modal Actualizar Progreso ──────────────────────────
 function UpdateProgressModal({ goal, onClose, onUpdated }: {
   goal: Goal; onClose: () => void; onUpdated: (newValue: number) => void
@@ -432,6 +655,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
   const [goals, setGoals] = useState<Goal[]>(initialGoals)
   const [activeTab, setActiveTab] = useState<'Todos' | 'Académico' | 'Personal' | 'Hábitos'>('Todos')
   const [showNewModal, setShowNewModal] = useState(false)
+  const [detailGoal, setDetailGoal] = useState<Goal | null>(null)
   const [progressGoal, setProgressGoal] = useState<Goal | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -477,6 +701,11 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
         ? { ...g, current_value: newValue, status: newValue >= g.target_value ? 'completed' : 'active' }
         : g
     ))
+    setDetailGoal(prev =>
+      prev?.id === goalId
+        ? { ...prev, current_value: newValue, status: newValue >= prev.target_value ? 'completed' : 'active' }
+        : prev
+    )
   }
 
   const tabs = ['Todos', 'Académico', 'Personal', 'Hábitos'] as const
@@ -487,6 +716,17 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
 
       {showNewModal && (
         <NewGoalModal onClose={() => setShowNewModal(false)} onCreated={() => router.refresh()} />
+      )}
+      {detailGoal && (
+        <GoalDetailModal
+          goal={detailGoal}
+          onClose={() => setDetailGoal(null)}
+          onOpenProgressUpdate={() => {
+            setProgressGoal(detailGoal)
+            setDetailGoal(null)
+          }}
+          onGoalValueUpdated={(newValue) => handleProgressUpdated(detailGoal.id, newValue)}
+        />
       )}
       {progressGoal && (
         <UpdateProgressModal goal={progressGoal} onClose={() => setProgressGoal(null)}
@@ -563,7 +803,8 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
 
             return (
               <div key={goal.id}
-                className="app-card group p-5 transition-all hover:shadow-md">
+                className="app-card group cursor-pointer p-5 transition-all hover:shadow-md"
+                onClick={() => setDetailGoal(goal)}>
                 <div className="flex items-start gap-4">
                   <div className={`w-10 h-10 rounded-xl ${config.bg} flex items-center justify-center shrink-0 mt-0.5`}>
                     <CategoryIcon className={`w-5 h-5 ${config.color}`} />
@@ -581,7 +822,7 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${config.bg} ${config.color}`}>
                           {config.label}
                         </span>
-                        <button onClick={() => handleDelete(goal.id)} disabled={deletingId === goal.id}
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(goal.id) }} disabled={deletingId === goal.id}
                           className="text-gray-200 dark:text-gray-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50">
                           {deletingId === goal.id
                             ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -591,21 +832,18 @@ export function GoalsClient({ initialGoals }: { initialGoals: Goal[] }) {
                     </div>
 
                     {/* Barra de progreso */}
-                    <button onClick={() => setProgressGoal(goal)}
-                      className="w-full mt-3 text-left group/progress">
+                    <div className="mt-3">
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           {goal.current_value} / {goal.target_value} {goal.unit}
                         </span>
-                        <span className={`text-xs font-bold ${config.color} group-hover/progress:underline`}>
-                          {progress}% · Actualizar
-                        </span>
+                        <span className={`text-xs font-bold ${config.color}`}>{progress}%</span>
                       </div>
                       <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
                         <div className={`h-2 rounded-full transition-all duration-500 ${config.progressColor}`}
                           style={{ width: `${progress}%` }} />
                       </div>
-                    </button>
+                    </div>
 
                     {/* Footer */}
                     <div className="flex items-center gap-4 mt-3">
